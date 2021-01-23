@@ -3,7 +3,7 @@ mod json;
 use anyhow::{bail, Context, Result};
 use chrono::prelude::*;
 use duct::cmd;
-use json::{Range, Year};
+use json::{Range, Year, Years};
 use std::collections::HashMap;
 
 #[derive(Debug, PartialEq)]
@@ -88,10 +88,15 @@ fn parse_years(days: Days) -> Result<Vec<Year>> {
     Ok(years)
 }
 
-fn main() -> Result<()> {
+fn parse() -> Result<Years> {
     let output = get_commits().context("Cannot read project history")?;
     let days: Result<Days> = output.lines().map(|line| parse_day(line)).collect();
-    println!("{:?}", days?);
+    Ok(parse_years(days?)?)
+}
+
+fn main() -> Result<()> {
+    let years = parse()?;
+    println!("years: {:?}", years);
     Ok(())
 }
 
