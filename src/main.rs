@@ -6,7 +6,7 @@ use duct::cmd;
 use json::{Range, Year};
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Debug, PartialEq)]
 struct Day {
     commits: usize,
     date: NaiveDate,
@@ -64,16 +64,18 @@ fn parse_years(days: Days) -> Result<Vec<Year>> {
     for (year, days) in years_map {
         let start = days
             .iter()
+            .map(|d| d.date)
             .min()
             .with_context(|| format!("Cannot read min day for {}", year))?;
         let end = days
             .iter()
+            .map(|d| d.date)
             .max()
             .with_context(|| format!("Cannot read max day for {}", year))?;
 
         let range = Range {
-            start: start.date.format("%Y-%m-%d").to_string(),
-            end: end.date.format("%Y-%m-%d").to_string(),
+            start: start.format("%Y-%m-%d").to_string(),
+            end: end.format("%Y-%m-%d").to_string(),
         };
 
         let year_obj = Year {
@@ -106,24 +108,20 @@ mod test_super {
 
     #[test]
     fn test_parse_years() {
-        let mut input: Vec<Day> = Vec::new();
-        input.push(Day::new(2, NaiveDate::from_ymd(2020, 4, 15)));
-        //     2 2020-04-15
-        //     1 2020-04-16
-        //     4 2020-04-18
-        //    26 2020-04-19
-        //     1 2020-04-20
-        //    23 2020-04-21
-        //     3 2020-04-22
+        let input: Vec<Day> = vec![
+            Day::new(2, NaiveDate::from_ymd(2020, 4, 15)),
+            Day::new(1, NaiveDate::from_ymd(2020, 4, 16)),
+            Day::new(4, NaiveDate::from_ymd(2020, 4, 17)),
+        ];
         let output = parse_years(input).unwrap();
 
         let range = Range {
             start: "2020-04-15".to_string(),
-            end: "2020-04-15".to_string(),
+            end: "2020-04-17".to_string(),
         };
         let expected = vec![Year {
             year: "2020".to_string(),
-            total: 2,
+            total: 7,
             range: range,
         }];
         assert_eq!(output, expected);
