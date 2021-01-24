@@ -3,10 +3,11 @@ mod json;
 use anyhow::{bail, Context, Result};
 use chrono::prelude::*;
 use duct::cmd;
-use json::{Range, Year, Years};
-use std::collections::HashMap;
+use json::{Contribution, Contributions, Range, Timeline, Year, Years};
+use quantiles::ckms::CKMS;
+use std::{collections::HashMap, fs};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 struct Day {
     commits: usize,
     date: NaiveDate,
@@ -45,6 +46,16 @@ fn parse_day(line: &str) -> Result<Day> {
     Ok(parsed)
 }
 
+fn map_years(days: Days) -> HashMap<i32, Days> {
+    let mut years_map = HashMap::new();
+    for day in days {
+        let y = day.date.year();
+        let year = years_map.entry(y).or_insert(vec![]);
+        year.push(day);
+    }
+    years_map
+}
+
 // {
 //     "year": "2020",
 //     "total": 2661,
@@ -53,15 +64,9 @@ fn parse_day(line: &str) -> Result<Day> {
 //         "end": "2020-12-31"
 //     }
 // }
-fn parse_years(days: Days) -> Result<Vec<Year>> {
-    let mut years_map = HashMap::new();
-    for day in days {
-        let y = day.date.year();
-        let year = years_map.entry(y).or_insert(vec![]);
-        year.push(day);
-    }
+fn parse_years(map: HashMap<i32, Days>) -> Result<Years> {
     let mut years = vec![];
-    for (year, days) in years_map {
+    for (year, days) in map {
         let start = days
             .iter()
             .map(|d| d.date)
@@ -88,20 +93,107 @@ fn parse_years(days: Days) -> Result<Vec<Year>> {
     Ok(years)
 }
 
-fn parse() -> Result<Years> {
-    let output = get_commits().context("Cannot read project history")?;
-    let days: Result<Days> = output.lines().map(|line| parse_day(line)).collect();
-    Ok(parse_years(days?)?)
+fn get_intensity(quartiles: &[usize], count: usize) -> usize {
+    for (index, quartile) in quartiles.iter().enumerate() {
+        if count < *quartile {
+            return index - 1;
+        }
+    }
+    return quartiles.len() - 1;
+}
+
+fn map_color(intensity: usize) -> String {
+    let color = match intensity {
+        1 => "var(--color-calendar-graph-day-L1-bg)",
+        2 => "var(--color-calendar-graph-day-L2-bg)",
+        3 => "var(--color-calendar-graph-day-L3-bg)",
+        4 => "var(--color-calendar-graph-day-L4-bg)",
+        _ => "var(--color-calendar-graph-day-bg)",
+    };
+    color.to_string()
+}
+
+fn parse_contributions(
+    quartiles_map: HashMap<i32, Vec<usize>>,
+    days: Days,
+) -> Result<Contributions> {
+    let mut contributions = Vec::new();
+    for day in days {
+        let y = day.date.year();
+        let count = day.commits;
+        let intensity = get_intensity(&quartiles_map[&y], count);
+        let color = map_color(intensity);
+
+        let contribution = Contribution {
+            date: day.date.format("%Y-%m-%d").to_string(),
+            count,
+            color,
+            intensity,
+        };
+        contributions.push(contribution);
+    }
+    Ok(contributions)
+}
+
+// Each cell in the timeline is shaded with one of 5 possible colors. These
+// colors correspond to the quartiles of the normal distribution over the range
+// [0, max(v)] where v is the sum of issues opened, pull requests proposed and
+// commits authored per day.
+// https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/
+// https://github.community/t/the-color-coding-of-contribution-graph-is-showing-wrong-information/18572
+fn parse_quartiles(input: &[usize]) -> Result<Vec<usize>> {
+    let max = input
+        .iter()
+        .max()
+        .with_context(|| format!("Cannot get maximum from input {:?}", input))?;
+
+    let mut ckms = CKMS::<u32>::new(0.001);
+    for i in 0..*max {
+        ckms.insert(i as u32);
+    }
+    Ok(vec![
+        0,
+        1,
+        ckms.query(0.25).context("Cannot get quartile")?.0,
+        ckms.query(0.5).context("Cannot get quartile")?.0,
+        ckms.query(0.75).context("Cannot get quartile")?.0,
+    ])
+}
+
+fn parse_lines(raw: String) -> Result<Days> {
+    raw.lines().map(|line| parse_day(line)).collect()
 }
 
 fn main() -> Result<()> {
-    let years = parse()?;
-    println!("years: {:?}", years);
+    let output = get_commits().context("Cannot read project history")?;
+    let days: Result<Days> = parse_lines(output);
+    let days = days?;
+    let map = map_years(days.clone());
+
+    let mut quartiles_map = HashMap::new();
+    for (year, days) in map.clone() {
+        let input: Vec<usize> = days.iter().map(|d| d.commits).collect();
+        let quartiles = parse_quartiles(&input)?;
+        quartiles_map.insert(year, quartiles);
+    }
+    let contributions = parse_contributions(quartiles_map, days)?;
+    let years = parse_years(map)?;
+
+    let timeline = Timeline {
+        years,
+        contributions,
+    };
+
+    let output = serde_json::to_string_pretty(&timeline)?;
+    fs::write("repo.json", output)?;
+
     Ok(())
 }
 
 #[cfg(test)]
 mod test_super {
+    use std::fs;
+
     use super::*;
 
     #[test]
@@ -113,12 +205,13 @@ mod test_super {
 
     #[test]
     fn test_parse_years() {
-        let input: Vec<Day> = vec![
+        let days: Vec<Day> = vec![
             Day::new(2, NaiveDate::from_ymd(2020, 4, 15)),
             Day::new(1, NaiveDate::from_ymd(2020, 4, 16)),
             Day::new(4, NaiveDate::from_ymd(2020, 4, 17)),
         ];
-        let output = parse_years(input).unwrap();
+        let map = map_years(days.clone());
+        let output = parse_years(map).unwrap();
 
         let range = Range {
             start: "2020-04-15".to_string(),
@@ -130,5 +223,35 @@ mod test_super {
             range: range,
         }];
         assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn test_quartiles() {
+        let input = [0, 1, 2, 3, 4, 5, 100];
+        let actual = parse_quartiles(&input).unwrap();
+        let expected = vec![0, 1, 25, 50, 75];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_quartiles_torvalds() {
+        let raw = fs::read_to_string("fixtures/torvalds-2019-git.txt").unwrap();
+        let lines = parse_lines(raw).unwrap();
+        let input = lines.iter().map(|line| line.commits).collect::<Vec<_>>();
+        let actual = parse_quartiles(&input).unwrap();
+        let expected = [0, 1, 11, 22, 32];
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_intensities() {
+        let quartiles = [0, 1, 11, 22, 32];
+        assert_eq!(0, get_intensity(&quartiles, 0));
+        assert_eq!(1, get_intensity(&quartiles, 1));
+        assert_eq!(1, get_intensity(&quartiles, 10));
+        assert_eq!(2, get_intensity(&quartiles, 18));
+        assert_eq!(3, get_intensity(&quartiles, 22));
+        assert_eq!(4, get_intensity(&quartiles, 32));
+        assert_eq!(4, get_intensity(&quartiles, 100));
     }
 }
