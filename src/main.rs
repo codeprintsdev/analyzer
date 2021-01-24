@@ -185,7 +185,7 @@ fn main() -> Result<()> {
     };
 
     let output = serde_json::to_string_pretty(&timeline)?;
-    fs::write("repo.json", output)?;
+    fs::write("codeprints.json", output)?;
 
     Ok(())
 }
