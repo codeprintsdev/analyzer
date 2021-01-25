@@ -177,7 +177,10 @@ fn main() -> Result<()> {
         quartiles_map.insert(year, quartiles);
     }
     let contributions = parse_contributions(quartiles_map, days)?;
-    let years = parse_years(map)?;
+    let mut years = parse_years(map)?;
+
+    years.sort();
+    years.reverse();
 
     let timeline = Timeline {
         years,
