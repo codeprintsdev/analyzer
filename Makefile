@@ -18,9 +18,13 @@ docker-run: ## Run Docker image
 docker-push: ## Push image to Docker Hub
 	docker push $(IMAGE_NAME)
 
-.PHONY: build-local
+.PHONY: build
 build: ## Build Rust code locally
 	cargo build
+
+.PHONY: test
+test: ## Test Rust code locally
+	cargo test
 
 .PHONY: run
 run: ## Run Rust code locally

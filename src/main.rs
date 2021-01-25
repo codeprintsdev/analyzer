@@ -5,7 +5,10 @@ use chrono::prelude::*;
 use duct::cmd;
 use json::{Contribution, Contributions, Range, Timeline, Year, Years};
 use quantiles::ckms::CKMS;
-use std::{collections::HashMap, fs};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 #[derive(Debug, PartialEq, Clone)]
 struct Day {
@@ -167,16 +170,31 @@ fn parse_lines(raw: String) -> Result<Days> {
 fn main() -> Result<()> {
     let output = get_commits().context("Cannot read project history")?;
     let days: Result<Days> = parse_lines(output);
-    let days = days?;
-    let map = map_years(days.clone());
+    let mut parsed_days = days?;
+    let map = map_years(parsed_days.clone());
 
     let mut quartiles_map = HashMap::new();
     for (year, days) in map.clone() {
         let input: Vec<usize> = days.iter().map(|d| d.commits).collect();
         let quartiles = parse_quartiles(&input)?;
         quartiles_map.insert(year, quartiles);
+
+        // Backfill missing days with zero commits
+        let found_dates: HashSet<NaiveDate> = days.iter().map(|d| d.date).collect();
+        for d in NaiveDate::from_ymd(year, 1, 1).iter_days() {
+            if d == NaiveDate::from_ymd(year + 1, 1, 1) {
+                break;
+            }
+            if found_dates.contains(&d) {
+                continue;
+            }
+            parsed_days.push(Day {
+                date: d,
+                commits: 0,
+            })
+        }
     }
-    let contributions = parse_contributions(quartiles_map, days)?;
+    let contributions = parse_contributions(quartiles_map, parsed_days)?;
     let mut years = parse_years(map)?;
 
     years.sort();
