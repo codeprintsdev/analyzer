@@ -29,5 +29,5 @@ This will not parse any sensitive data. It is merely a wrapper around
 ## Support
 
 In case you run into problems, don't hestitate to open an issue.  
-We're always happy about code contributions as well of course.
+We're always happy about code contributions as well of course.  
 For business inquiries, please reach out to us at support@codeprints.dev.
