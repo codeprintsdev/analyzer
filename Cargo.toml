@@ -1,11 +1,18 @@
 [package]
 name = "client"
 version = "0.1.0"
-authors = ["Matthias Endler <matthias-endler@gmx.net>"]
+authors = ["Codeprints <support@codeprints.dev>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Client to generate data about private repos for codeprints.dev"
+documentation = "https://github.com/codeprintsdev/client"
+homepage = "codeprints.dev"
+keywords = [
+    "client",
+    "github",
+    "contributions",
+    "codeprints",
+]
 
 [dependencies]
 anyhow = "1.0.38"
