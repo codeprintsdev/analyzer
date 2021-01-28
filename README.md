@@ -3,14 +3,17 @@
 This command-line client allows to analyze local/private git repositories,  
 generate and upload the data for print on codeprints.
 
-## Upload a raw data to the codeprints API
+
+## Usage
+
+1. Navigate to any Github repository. 
+2. Run the following command to generate a `codeprints.json` for the repo:
 
 ```
-docker run -v `pwd`/repo codeprints/client upload 
+docker run -v `pwd`/repo codeprints/client 
 ```
 
-## Show raw data to be uploaded
+This will not parse any sensitive data. It is merely a wrapper around
+`git log --date=short-local --pretty=format:%ad`.
 
-```
-docker run -v `pwd`/repo codeprints/client raw 
-```
+3. Upload the JSON file on codeprints.dev to render a print.
