@@ -26,6 +26,12 @@ This will not parse any sensitive data. It is merely a wrapper around
 
 3. Upload the JSON file on codeprints.dev to render a print.
 
+## How the Github Contribution Timeline works
+
+The code is based on a great post about the contributions calendar.  
+The "algorithm" behind it is surprisingly sophisticated.    
+https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/
+
 ## Support
 
 In case you run into problems, don't hestitate to open an issue.  
