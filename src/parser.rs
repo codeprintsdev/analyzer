@@ -152,9 +152,7 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Timeline> {
-        let days: Result<Days> = Parser::parse_lines(&self.input);
-
-        let mut parsed_days = days?;
+        let mut parsed_days = Parser::parse_lines(&self.input)?;
         let map = Parser::map_years(parsed_days.clone());
 
         let mut quartiles_map = HashMap::new();
