@@ -1,4 +1,19 @@
+use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Day {
+    pub commits: usize,
+    pub date: NaiveDate,
+}
+
+impl Day {
+    pub fn new(commits: usize, date: NaiveDate) -> Self {
+        Day { commits, date }
+    }
+}
+
+pub type Days = Vec<Day>;
 
 #[derive(Default, Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
