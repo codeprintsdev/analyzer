@@ -13,8 +13,6 @@ impl Day {
     }
 }
 
-pub type Days = Vec<Day>;
-
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Year {

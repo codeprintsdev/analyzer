@@ -1,11 +1,8 @@
-use crate::types::{Contribution, Contributions, Day, Days, Range, Timeline, Year, Years};
+use crate::types::{Contribution, Contributions, Day, Range, Timeline, Year};
 use anyhow::{bail, Context, Result};
 use chrono::prelude::*;
 use quantiles::ckms::CKMS;
-use std::{
-    cmp,
-    collections::{HashMap, HashSet},
-};
+use std::collections::{HashMap, HashSet};
 
 /// A parser that converts git log output into the JSON format understood by the
 /// API of codeprints.dev.
@@ -13,7 +10,7 @@ pub struct Parser {
     input: String,
     days: HashSet<Day>,
     years_map: HashMap<i32, Year>,
-    quartiles_map: HashMap<i32, Vec<usize>>,
+    quartiles_map: HashMap<i32, CKMS<u32>>,
 }
 
 impl Parser {
@@ -37,42 +34,56 @@ impl Parser {
     //         "end": "2020-12-31"
     //     }
     // }
-    fn parse_years(map: &HashMap<i32, Days>) -> Result<Years> {
-        let mut years = vec![];
-        for (year, days) in map {
-            let start = days
-                .iter()
-                .map(|d| d.date)
-                .min()
-                .with_context(|| format!("Cannot read min day for {}", year))?;
-            let end = days
-                .iter()
-                .map(|d| d.date)
-                .max()
-                .with_context(|| format!("Cannot read max day for {}", year))?;
+    // fn parse_years(map: &HashMap<i32, Days>) -> Result<Years> {
+    //     let mut years = vec![];
+    //     for (year, days) in map {
+    //         let start = days
+    //             .iter()
+    //             .map(|d| d.date)
+    //             .min()
+    //             .with_context(|| format!("Cannot read min day for {}", year))?;
+    //         let end = days
+    //             .iter()
+    //             .map(|d| d.date)
+    //             .max()
+    //             .with_context(|| format!("Cannot read max day for {}", year))?;
 
-            let range = Range {
-                start: start.format("%Y-%m-%d").to_string(),
-                end: end.format("%Y-%m-%d").to_string(),
-            };
+    //         let range = Range {
+    //             start: start.format("%Y-%m-%d").to_string(),
+    //             end: end.format("%Y-%m-%d").to_string(),
+    //         };
 
-            let year_obj = Year {
-                year: year.to_string(),
-                total: days.iter().map(|d| d.commits).sum(),
-                range: range,
-            };
-            years.push(year_obj);
-        }
-        Ok(years)
-    }
+    //         let year_obj = Year {
+    //             year: year.to_string(),
+    //             total: days.iter().map(|d| d.commits).sum(),
+    //             range: range,
+    //         };
+    //         years.push(year_obj);
+    //     }
+    //     Ok(years)
+    // }
 
-    fn get_intensity(quartiles: &[usize], count: usize) -> usize {
+    fn get_intensity(&self, day: &Day) -> Result<usize> {
+        let year = day.date.year();
+        let ckms = self
+            .quartiles_map
+            .get(&year)
+            .context(format!("Cannot get quartiles map for {}", year))?;
+
+        let quartiles = [
+            0,
+            1,
+            ckms.query(0.25).context("Cannot get quartile")?.0,
+            ckms.query(0.5).context("Cannot get quartile")?.0,
+            ckms.query(0.75).context("Cannot get quartile")?.0,
+        ];
+
         for (index, quartile) in quartiles.iter().enumerate() {
-            if count < *quartile {
-                return index - 1;
+            if day.commits < *quartile {
+                return Ok(index - 1);
             }
         }
-        return quartiles.len() - 1;
+        return Ok(quartiles.len() - 1);
     }
 
     fn map_color(intensity: usize) -> String {
@@ -86,21 +97,15 @@ impl Parser {
         color.to_string()
     }
 
-    fn parse_contributions(
-        &self,
-        quartiles_map: &HashMap<i32, Vec<usize>>,
-        days: &Days,
-    ) -> Result<Contributions> {
+    fn parse_contributions(&self) -> Result<Contributions> {
         let mut contributions = Vec::new();
-        for day in days {
-            let y = day.date.year();
-            let count = day.commits;
-            let intensity = Parser::get_intensity(&quartiles_map[&y], count);
+        for day in &self.days {
+            let intensity = self.get_intensity(&day)?;
             let color = Parser::map_color(intensity);
 
             let contribution = Contribution {
                 date: day.date.format("%Y-%m-%d").to_string(),
-                count,
+                count: day.commits,
                 color,
                 intensity,
             };
@@ -115,25 +120,25 @@ impl Parser {
     // commits authored per day.
     // https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/
     // https://github.community/t/the-color-coding-of-contribution-graph-is-showing-wrong-information/18572
-    fn quartiles(&self, input: &[Day]) -> Result<Vec<usize>> {
-        let max = input
-            .iter()
-            .map(|d| d.commits)
-            .max()
-            .with_context(|| format!("Cannot get maximum from input {:?}", input))?;
+    // fn quartiles(&self, input: &[Day]) -> Result<Vec<usize>> {
+    //     let max = input
+    //         .iter()
+    //         .map(|d| d.commits)
+    //         .max()
+    //         .with_context(|| format!("Cannot get maximum from input {:?}", input))?;
 
-        let mut ckms = CKMS::<u32>::new(0.001);
-        for i in 0..max {
-            ckms.insert(i as u32);
-        }
-        Ok(vec![
-            0,
-            1,
-            ckms.query(0.25).context("Cannot get quartile")?.0,
-            ckms.query(0.5).context("Cannot get quartile")?.0,
-            ckms.query(0.75).context("Cannot get quartile")?.0,
-        ])
-    }
+    //     let mut ckms = CKMS::<u32>::new(0.001);
+    //     for i in 0..max {
+    //         ckms.insert(i as u32);
+    //     }
+    //     Ok(vec![
+    //         0,
+    //         1,
+    //         ckms.query(0.25).context("Cannot get quartile")?.0,
+    //         ckms.query(0.5).context("Cannot get quartile")?.0,
+    //         ckms.query(0.75).context("Cannot get quartile")?.0,
+    //     ])
+    // }
 
     fn parse_fields(&self, line: &str) -> Result<(usize, NaiveDate)> {
         let fields: Vec<&str> = line.split_whitespace().collect();
@@ -158,16 +163,22 @@ impl Parser {
             range: Range::default(),
         });
         year.total += day.commits;
-        year.range = Range {
-            start: cmp::min(year.range.start, day.date.format("%Y-%m-%d").to_string()),
-            end: cmp::max(year.range.end, day.date.format("%Y-%m-%d").to_string()),
+        let date = day.date.format("%Y-%m-%d").to_string();
+        if year.range.start.is_empty() || date < year.range.start {
+            year.range.start = date.clone();
+        }
+        if year.range.end.is_empty() || date > year.range.end {
+            year.range.end = date
         }
     }
 
-    fn update_quartiles(&mut self, day: Day) {
+    fn update_quartiles(&mut self, day: &Day) {
         let y = day.date.year();
-        let year = self.quartiles_map.entry(y).or_default();
-        year.push(day.commits);
+        let year = self
+            .quartiles_map
+            .entry(y)
+            .or_insert(CKMS::<u32>::new(0.001));
+        year.insert(day.commits as u32);
     }
 
     /// Parses the following input `2 2020-04-15`
@@ -179,8 +190,8 @@ impl Parser {
     }
 
     pub fn update_stats(&mut self, day: Day) -> Result<()> {
+        self.update_quartiles(&day);
         self.update_years(day);
-        self.update_quartiles(day);
         Ok(())
     }
 
@@ -188,18 +199,16 @@ impl Parser {
         let input = self.input.clone();
         for line in input.lines() {
             let day = self.parse_day(&line)?;
-            self.days.insert(day);
+            self.days.insert(day.clone());
+            self.update_stats(day)
+                .context("Cannot update stats for {:?}")?;
         }
 
-        for day in self.days {
-            self.update_stats(day);
-        }
-
-        let mut years: Vec<Year> = self.years_map.iter().map(|(k, v)| v).collect();
+        let mut years: Vec<Year> = self.years_map.iter().map(|(_k, v)| v).cloned().collect();
         years.sort();
         years.reverse();
 
-        let contributions = normalize(self.days, self.quartiles_map);
+        let contributions = self.parse_contributions()?;
 
         Ok(Timeline {
             years,
@@ -208,26 +217,11 @@ impl Parser {
     }
 }
 
-fn normalize(days: HashSet<Day>, quartiles_map: HashMap<i32, Vec<usize>>) -> Contributions {
-    let mut contributions = vec![];
-
-    for 
-    
-
-}
-
 #[cfg(test)]
 mod test_super {
     use std::fs;
 
     use super::*;
-
-    #[test]
-    fn test_parse_line() {
-        let expected = Day::new(123, NaiveDate::from_ymd(2020, 11, 04));
-        let actual = Parser::parse_day("123 2020-11-04").unwrap();
-        assert_eq!(expected, actual);
-    }
 
     #[test]
     fn test_parse_years() {
