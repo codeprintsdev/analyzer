@@ -29,8 +29,7 @@ docker run -v `pwd`/repo codeprints/client
 ## How the Github Contribution Timeline works
 
 The code is based on a great post about the contributions calendar.  
-The "algorithm" behind it is surprisingly sophisticated.    
-https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/
+The "algorithm" behind it is [surprisingly sophisticated](https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/).
 
 ## Support
 
