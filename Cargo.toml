@@ -14,6 +14,11 @@ keywords = [
     "codeprints",
 ]
 
+[[bin]]
+name = "client"
+path = "src/bin/client/main.rs"
+
+
 [dependencies]
 anyhow = "1.0.38"
 duct = "0.13.4"

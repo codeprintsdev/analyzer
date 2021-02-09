@@ -1,46 +1,30 @@
+use crate::quartiles::quartiles;
 use crate::types::{Contribution, Contributions, Day, Range, Timeline, Year};
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use chrono::prelude::*;
-use quantiles::ckms::CKMS;
 use std::collections::{HashMap, HashSet};
 
 /// A parser that converts git log output
 /// into the JSON format understood by the
 /// API of codeprints.dev.
+#[derive(Debug)]
 pub struct Parser {
     input: String,
-    days: HashSet<Day>,
     years_map: HashMap<i32, Year>,
-    quartiles_map: HashMap<i32, CKMS<u32>>,
+    days: HashSet<Day>,
 }
 
 impl Parser {
+    /// Create a new parser that analyzes the given input
     pub fn new(input: String) -> Self {
         let years_map = HashMap::new();
-        let quartiles_map = HashMap::new();
         let days = HashSet::new();
 
         Parser {
             input,
-            days,
             years_map,
-            quartiles_map,
+            days,
         }
-    }
-
-    fn get_quartiles(&self, year: i32) -> Result<Vec<usize>> {
-        let quantiles = self
-            .quartiles_map
-            .get(&year)
-            .context(format!("Cannot get quartiles map for {}", year))?;
-
-        Ok(vec![
-            0,
-            1,
-            quantiles.query(0.25).context("Cannot get quartile")?.0,
-            quantiles.query(0.5).context("Cannot get quartile")?.0,
-            quantiles.query(0.75).context("Cannot get quartile")?.0,
-        ])
     }
 
     // Each cell in the timeline is shaded with one of 5 possible colors. These
@@ -49,11 +33,9 @@ impl Parser {
     // commits authored per day.
     // https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/
     // https://github.community/t/the-color-coding-of-contribution-graph-is-showing-wrong-information/18572
-    fn get_intensity(&self, day: &Day) -> Result<usize> {
-        let year = day.date.year();
-        let quartiles = self.get_quartiles(year)?;
+    fn get_intensity(quartiles: &[usize], commits: usize) -> Result<usize> {
         for (index, quartile) in quartiles.iter().enumerate() {
-            if day.commits < *quartile {
+            if commits < *quartile {
                 return Ok(index - 1);
             }
         }
@@ -71,11 +53,35 @@ impl Parser {
         .to_string()
     }
 
-    fn parse_contributions(&self) -> Result<Contributions> {
+    /// Backfill missing days with zero commits
+    fn backfill(year: i32, days: HashSet<Day>) -> HashSet<Day> {
+        let mut missing_days: HashSet<Day> = HashSet::new();
+
+        let found_dates: HashSet<NaiveDate> = days.iter().map(|d| d.date).collect();
+        for d in NaiveDate::from_ymd(year, 1, 1).iter_days() {
+            if d == NaiveDate::from_ymd(year + 1, 1, 1) {
+                break;
+            }
+            if found_dates.contains(&d) {
+                continue;
+            }
+            missing_days.insert(Day {
+                date: d,
+                commits: 0,
+            });
+        }
+        days.union(&missing_days).cloned().collect()
+    }
+
+    fn create_contributions(
+        &self,
+        days: &HashSet<Day>,
+        quartiles: &Vec<usize>,
+    ) -> Result<Contributions> {
         let mut contributions = Vec::new();
-        for day in &self.days {
-            let intensity = self.get_intensity(&day)?;
-            let color = Parser::map_color(intensity);
+        for day in days {
+            let intensity = Self::get_intensity(&quartiles, day.commits)?;
+            let color = Self::map_color(intensity);
 
             contributions.push(Contribution {
                 date: day.date.format("%Y-%m-%d").to_string(),
@@ -105,6 +111,7 @@ impl Parser {
         Ok(Some(Day::new(commits, date)))
     }
 
+    /// Add a single day to the map of years
     fn update_years(&mut self, day: Day) {
         let y = day.date.year();
         let mut year = self.years_map.entry(y).or_insert(Year {
@@ -123,35 +130,37 @@ impl Parser {
         }
     }
 
-    fn update_quartiles(&mut self, day: &Day) {
-        let y = day.date.year();
-        let year = self
-            .quartiles_map
-            .entry(y)
-            .or_insert(CKMS::<u32>::new(0.001));
-        year.insert(day.commits as u32);
-    }
-
-    pub fn update_stats(&mut self, day: Day) {
-        self.update_quartiles(&day);
-        self.update_years(day);
-    }
-
+    /// Execute the parsing step
     pub fn parse(&mut self) -> Result<Timeline> {
         let input = self.input.clone();
         for line in input.lines() {
             let day = self.parse_day(&line)?;
             if let Some(d) = day {
                 self.days.insert(d.clone());
-                self.update_stats(d);
+                self.update_years(d);
             }
         }
 
-        let mut years: Vec<Year> = self.years_map.iter().map(|(_k, v)| v).cloned().collect();
+        let mut years: Vec<Year> = self.years_map.values().cloned().collect();
         years.sort();
         years.reverse();
 
-        let contributions = self.parse_contributions()?;
+        let mut contributions = Contributions::new();
+        for year in &years {
+            let year_contribs: HashSet<Day> = self
+                .days
+                .iter()
+                .cloned()
+                .filter(|d| d.date.year().to_string() == year.year)
+                .collect();
+            let year_contribs = Self::backfill(year.year.parse::<i32>()?, year_contribs);
+            let commits: Vec<usize> = year_contribs.iter().map(|d| d.commits).collect();
+            let quartiles = quartiles(&commits)?;
+
+            let mut contribs = self.create_contributions(&year_contribs, &quartiles)?;
+            contributions.append(&mut contribs);
+        }
+        contributions.sort();
 
         Ok(Timeline {
             years,
@@ -187,43 +196,14 @@ mod test_super {
     }
 
     #[test]
-    fn test_quartiles() {
-        let input = r###"
-            0 2020-04-15
-            1 2020-04-16
-            2 2020-04-17
-            3 2020-04-18
-            4 2020-04-19
-            5 2020-04-20
-            100 2020-04-21
-        "###;
-        let mut parser = Parser::new(input.to_string());
-        parser.parse().unwrap();
-
-        let actual = parser.get_quartiles(2020).unwrap();
-        let expected = vec![0, 1, 25, 50, 75];
-        assert_eq!(actual, expected);
+    fn test_intensities() {
+        let quartiles = [0, 1, 11, 22, 32];
+        assert_eq!(0, Parser::get_intensity(&quartiles, 0).unwrap());
+        assert_eq!(1, Parser::get_intensity(&quartiles, 1).unwrap());
+        assert_eq!(1, Parser::get_intensity(&quartiles, 10).unwrap());
+        assert_eq!(2, Parser::get_intensity(&quartiles, 18).unwrap());
+        assert_eq!(3, Parser::get_intensity(&quartiles, 22).unwrap());
+        assert_eq!(4, Parser::get_intensity(&quartiles, 32).unwrap());
+        assert_eq!(4, Parser::get_intensity(&quartiles, 100).unwrap());
     }
-
-    // #[test]
-    // fn test_quartiles_torvalds() {
-    //     let raw = fs::read_to_string("fixtures/torvalds-2019-git.txt").unwrap();
-    //     let lines = Parser::parse_lines(&raw).unwrap();
-    //     let input = lines.iter().map(|line| line.commits).collect::<Vec<_>>();
-    //     let actual = Parser::parse_quartiles(&input).unwrap();
-    //     let expected = [0, 1, 11, 22, 32];
-    //     assert_eq!(actual, expected);
-    // }
-
-    // #[test]
-    // fn test_intensities() {
-    //     let quartiles = [0, 1, 11, 22, 32];
-    //     assert_eq!(0, Parser::get_intensity(&quartiles, 0));
-    //     assert_eq!(1, Parser::get_intensity(&quartiles, 1));
-    //     assert_eq!(1, Parser::get_intensity(&quartiles, 10));
-    //     assert_eq!(2, Parser::get_intensity(&quartiles, 18));
-    //     assert_eq!(3, Parser::get_intensity(&quartiles, 22));
-    //     assert_eq!(4, Parser::get_intensity(&quartiles, 32));
-    //     assert_eq!(4, Parser::get_intensity(&quartiles, 100));
-    // }
 }
