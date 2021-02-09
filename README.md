@@ -1,7 +1,7 @@
 # codeprints client
 
-This command-line client allows to analyze local/private git repositories,  
-generate and upload the data for print on codeprints.
+A command-line client which analyzes local/private git repositories  
+and generates a data file for [codeprints.dev](https://codeprints.dev/).
 
 ## Why?
 
@@ -9,22 +9,22 @@ A lot of code is not public on Github; especially commerical projects.
 Nevertheless there is demand for creating prints from a repository
 (e.g. to give them as a present to each team member after reaching a major milestone).
 
-This is why we offer this client that can be used locally without having to
-make the code public or install any dependencies.
+This is why we offer a client that can be used locally without having to
+make any code public or install any dependencies.
 
 ## Usage
 
-1. Navigate to any Github repository. 
+1. Navigate to any local git repository. 
 2. Run the following command to generate a `codeprints.json` for the repo:
 
 ```
 docker run -v `pwd`/repo codeprints/client 
 ```
 
-This will not parse any sensitive data. It is merely a wrapper around
-`git log --date=short-local --pretty=format:%ad`.
+(This will not parse any sensitive data. It is merely a wrapper around
+`git log --date=short-local --pretty=format:%ad`.)
 
-3. Upload the JSON file on codeprints.dev to render a print.
+3. Upload the JSON file to codeprints.dev to render a print.
 
 ## How the Github Contribution Timeline works
 
