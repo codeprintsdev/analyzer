@@ -1,6 +1,5 @@
 FROM rust:latest as builder
 
-RUN USER=root cargo new --bin client
 WORKDIR /client
 
 # Just copy the Cargo.toml and trigger a build so 
@@ -8,17 +7,8 @@ WORKDIR /client
 # This way we avoid layer cache invalidation
 # if our dependencies haven't changed,
 # resulting in faster builds.
-COPY Cargo.toml Cargo.toml
+COPY . ./
 RUN cargo build --release
-RUN rm src/*.rs
-
-# Copy the source code and run the build again.
-# This should only compile the client itself as the
-# dependencies were already built above.
-ADD . ./
-RUN rm ./target/release/deps/client*
-RUN cargo build --release
-
 
 # Our production image starts here, which uses 
 # the files from the builder image above.
