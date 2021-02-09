@@ -33,13 +33,13 @@ impl Parser {
     // commits authored per day.
     // https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/
     // https://github.community/t/the-color-coding-of-contribution-graph-is-showing-wrong-information/18572
-    fn get_intensity(quartiles: &[usize], commits: usize) -> Result<usize> {
+    fn get_intensity(quartiles: &[usize], commits: usize) -> usize {
         for (index, quartile) in quartiles.iter().enumerate() {
             if commits < *quartile {
-                return Ok(index - 1);
+                return index - 1;
             }
         }
-        return Ok(quartiles.len() - 1);
+        quartiles.len() - 1
     }
 
     fn map_color(intensity: usize) -> String {
@@ -73,14 +73,10 @@ impl Parser {
         days.union(&missing_days).cloned().collect()
     }
 
-    fn create_contributions(
-        &self,
-        days: &HashSet<Day>,
-        quartiles: &Vec<usize>,
-    ) -> Result<Contributions> {
+    fn create_contributions(&self, days: &HashSet<Day>, quartiles: &[usize]) -> Vec<Contribution> {
         let mut contributions = Vec::new();
         for day in days {
-            let intensity = Self::get_intensity(&quartiles, day.commits)?;
+            let intensity = Self::get_intensity(&quartiles, day.commits);
             let color = Self::map_color(intensity);
 
             contributions.push(Contribution {
@@ -90,7 +86,7 @@ impl Parser {
                 intensity,
             });
         }
-        Ok(contributions)
+        contributions
     }
 
     fn parse_day(&self, line: &str) -> Result<Option<Day>> {
@@ -157,7 +153,7 @@ impl Parser {
             let commits: Vec<usize> = year_contribs.iter().map(|d| d.commits).collect();
             let quartiles = quartiles(&commits)?;
 
-            let mut contribs = self.create_contributions(&year_contribs, &quartiles)?;
+            let mut contribs = self.create_contributions(&year_contribs, &quartiles);
             contributions.append(&mut contribs);
         }
         contributions.sort();
@@ -198,12 +194,12 @@ mod test_super {
     #[test]
     fn test_intensities() {
         let quartiles = [0, 1, 11, 22, 32];
-        assert_eq!(0, Parser::get_intensity(&quartiles, 0).unwrap());
-        assert_eq!(1, Parser::get_intensity(&quartiles, 1).unwrap());
-        assert_eq!(1, Parser::get_intensity(&quartiles, 10).unwrap());
-        assert_eq!(2, Parser::get_intensity(&quartiles, 18).unwrap());
-        assert_eq!(3, Parser::get_intensity(&quartiles, 22).unwrap());
-        assert_eq!(4, Parser::get_intensity(&quartiles, 32).unwrap());
-        assert_eq!(4, Parser::get_intensity(&quartiles, 100).unwrap());
+        assert_eq!(0, Parser::get_intensity(&quartiles, 0));
+        assert_eq!(1, Parser::get_intensity(&quartiles, 1));
+        assert_eq!(1, Parser::get_intensity(&quartiles, 10));
+        assert_eq!(2, Parser::get_intensity(&quartiles, 18));
+        assert_eq!(3, Parser::get_intensity(&quartiles, 22));
+        assert_eq!(4, Parser::get_intensity(&quartiles, 32));
+        assert_eq!(4, Parser::get_intensity(&quartiles, 100));
     }
 }
