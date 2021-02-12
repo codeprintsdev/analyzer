@@ -18,7 +18,7 @@ make any code public or install any dependencies.
 2. Run the following command to generate a `codeprints.json` for the repo:
 
 ```
-docker run -v `pwd`/repo codeprints/client 
+docker run -v `pwd`:/repo codeprints/client
 ```
 
 (This will not parse any sensitive data. It is merely a wrapper around
