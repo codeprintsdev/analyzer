@@ -1,12 +1,6 @@
 FROM rust:latest as builder
 
 WORKDIR /client
-
-# Just copy the Cargo.toml and trigger a build so 
-# that we compile our dependencies only.
-# This way we avoid layer cache invalidation
-# if our dependencies haven't changed,
-# resulting in faster builds.
 COPY . ./
 RUN cargo build --release
 
