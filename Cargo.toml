@@ -21,9 +21,9 @@ path = "src/bin/client/main.rs"
 
 [dependencies]
 anyhow = "1.0.38"
-duct = "0.13.4"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+duct = "0.13.5"
+serde = { version = "1.0.123", features = ["derive"] }
+serde_json = "1.0.62"
 chrono = "0.4.19"
 quantiles = "0.7.1"
 structopt = "0.3.21"
