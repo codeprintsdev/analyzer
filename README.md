@@ -5,7 +5,7 @@ and generates a data file for [codeprints.dev](https://codeprints.dev/).
 
 ## Why?
 
-A lot of code is not public on Github; especially commerical projects.
+A lot of code is not public on Github; especially commercial projects.
 Nevertheless there is demand for creating prints from a repository
 (e.g. to give them as a present to each team member after reaching a major milestone).
 
