@@ -24,6 +24,12 @@ docker run -v `pwd`:/repo codeprints/client
 (This will not parse any sensitive data. It is merely a wrapper around
 `git log --date=short-local --pretty=format:%ad`.)
 
+Alternatively you can also run the Rust binary without Docker:
+
+```
+cargo install --git https://github.com/codeprintsdev/client
+```
+
 3. Upload the JSON file to codeprints.dev to render a print.
 
 ## Limiting time range
