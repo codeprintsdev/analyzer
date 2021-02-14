@@ -12,8 +12,10 @@
     unused_qualifications
 )]
 
+mod git;
 mod parser;
 mod quartiles;
 mod types;
 
+pub use crate::git::count_commits;
 pub use crate::parser::Parser;
