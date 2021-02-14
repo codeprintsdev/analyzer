@@ -12,6 +12,6 @@ RUN apt-get update \
     && apt-get install -y git \
     && rm -rf /var/lib/apt/lists/* 
 
-COPY --from=builder /analyzer/target/release/analyzer /usr/local/bin/analyzer
+COPY --from=builder /analyzer/target/release/codeprints-analyzer /usr/local/bin/codeprints-analyzer
 WORKDIR /repo
-ENTRYPOINT [ "analyzer" ]
+ENTRYPOINT [ "codeprints-analyzer" ]
