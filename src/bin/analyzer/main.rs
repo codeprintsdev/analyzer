@@ -25,7 +25,7 @@ fn main() -> Result<()> {
 
     print!("Analyzing commits in current repository...");
     let input = count_commits(opt.before, opt.after, opt.author, opt.committer)
-        .context("Cannot read project history")?;
+        .context("Cannot read project history. Make sure there is no typo in the command")?;
     let mut parser = Parser::new(input);
     let timeline = parser.parse()?;
     let output = serde_json::to_string_pretty(&timeline)?;
