@@ -17,7 +17,7 @@ keywords = [
 ]
 
 [[bin]]
-name = "analyzer"
+name = "codeprints-analyzer"
 path = "src/bin/analyzer/main.rs"
 
 
