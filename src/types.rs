@@ -7,12 +7,6 @@ pub struct Day {
     pub date: NaiveDate,
 }
 
-impl Day {
-    pub fn new(commits: usize, date: NaiveDate) -> Self {
-        Day { commits, date }
-    }
-}
-
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Year {

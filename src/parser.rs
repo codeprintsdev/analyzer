@@ -1,8 +1,8 @@
 use crate::quartiles::quartiles;
-use crate::types::{Contribution, Contributions, Day, Range, Timeline, Year};
-use anyhow::{bail, Result};
+use crate::types::{Contribution, Contributions, Range, Timeline, Year};
+use anyhow::{Context, Result};
 use chrono::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// A parser that converts git log output
 /// into the JSON format understood by the
@@ -11,14 +11,14 @@ use std::collections::{HashMap, HashSet};
 pub struct Parser {
     input: String,
     years_map: HashMap<i32, Year>,
-    days: HashSet<Day>,
+    days: HashMap<NaiveDate, usize>,
 }
 
 impl Parser {
     /// Create a new parser that analyzes the given input
     pub fn new(input: String) -> Self {
         let years_map = HashMap::new();
-        let days = HashSet::new();
+        let days = HashMap::new();
 
         Parser {
             input,
@@ -54,34 +54,28 @@ impl Parser {
     }
 
     /// Backfill missing days with zero commits
-    fn backfill(year: i32, days: HashSet<Day>) -> HashSet<Day> {
-        let mut missing_days: HashSet<Day> = HashSet::new();
-
-        let found_dates: HashSet<NaiveDate> = days.iter().map(|d| d.date).collect();
+    fn backfill(year: i32, days: &mut HashMap<NaiveDate, usize>) {
         for d in NaiveDate::from_ymd(year, 1, 1).iter_days() {
             if d == NaiveDate::from_ymd(year + 1, 1, 1) {
                 break;
             }
-            if found_dates.contains(&d) {
-                continue;
-            }
-            missing_days.insert(Day {
-                date: d,
-                commits: 0,
-            });
+            days.entry(d).or_insert(0);
         }
-        days.union(&missing_days).cloned().collect()
     }
 
-    fn create_contributions(&self, days: &HashSet<Day>, quartiles: &[usize]) -> Vec<Contribution> {
+    fn create_contributions(
+        &self,
+        days: &HashMap<NaiveDate, usize>,
+        quartiles: &[usize],
+    ) -> Vec<Contribution> {
         let mut contributions = Vec::new();
-        for day in days {
-            let intensity = Self::get_intensity(&quartiles, day.commits);
+        for (date, commits) in days {
+            let intensity = Self::get_intensity(&quartiles, *commits);
             let color = Self::map_color(intensity);
 
             contributions.push(Contribution {
-                date: day.date.format("%Y-%m-%d").to_string(),
-                count: day.commits,
+                date: date.format("%Y-%m-%d").to_string(),
+                count: *commits,
                 color,
                 intensity,
             });
@@ -89,35 +83,26 @@ impl Parser {
         contributions
     }
 
-    fn parse_day(&self, line: &str) -> Result<Option<Day>> {
+    fn parse_date(&self, line: &str) -> Result<Option<NaiveDate>> {
         if line.trim().is_empty() {
             // Empty lines are allowed, but skipped
             return Ok(None);
         }
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() != 2 {
-            bail!(
-                "Invalid input line `{}`. Expected 2 input fields, got {}",
-                line,
-                fields.len()
-            );
-        };
-        let commits = fields[0].parse::<usize>()?;
-        let date: NaiveDate = fields[1].parse()?;
-        Ok(Some(Day::new(commits, date)))
+        let date: NaiveDate = line.parse().context(format!("Invalid date {}", line))?;
+        Ok(Some(date))
     }
 
     /// Add a single day to the map of years
-    fn update_years(&mut self, day: Day) {
-        let y = day.date.year();
+    fn update_years(&mut self, date: NaiveDate) {
+        let y = date.year();
         let mut year = self.years_map.entry(y).or_insert(Year {
             year: y.to_string(),
             total: 0,
             range: Range::default(),
         });
-        year.total += day.commits;
+        year.total += 1;
 
-        let date = day.date.format("%Y-%m-%d").to_string();
+        let date = date.format("%Y-%m-%d").to_string();
         if year.range.start.is_empty() || date < year.range.start {
             year.range.start = date.clone();
         }
@@ -126,13 +111,18 @@ impl Parser {
         }
     }
 
+    /// Add a single day to the map of days
+    fn update_days(&mut self, date: NaiveDate) {
+        *self.days.entry(date).or_insert(0) += 1;
+    }
+
     /// Execute the parsing step
     pub fn parse(&mut self) -> Result<Timeline> {
         let input = self.input.clone();
         for line in input.lines() {
-            let day = self.parse_day(&line)?;
+            let day = self.parse_date(&line)?;
             if let Some(d) = day {
-                self.days.insert(d.clone());
+                self.update_days(d);
                 self.update_years(d);
             }
         }
@@ -143,14 +133,14 @@ impl Parser {
 
         let mut contributions = Contributions::new();
         for year in &years {
-            let year_contribs: HashSet<Day> = self
+            let mut year_contribs: HashMap<NaiveDate, usize> = self
                 .days
-                .iter()
-                .cloned()
-                .filter(|d| d.date.year().to_string() == year.year)
+                .clone()
+                .into_iter()
+                .filter(|(date, _commits)| date.year().to_string() == year.year)
                 .collect();
-            let year_contribs = Self::backfill(year.year.parse::<i32>()?, year_contribs);
-            let commits: Vec<usize> = year_contribs.iter().map(|d| d.commits).collect();
+            Self::backfill(year.year.parse::<i32>()?, &mut year_contribs);
+            let commits: Vec<usize> = year_contribs.values().cloned().collect();
             let quartiles = quartiles(&commits)?;
 
             let mut contribs = self.create_contributions(&year_contribs, &quartiles);
@@ -173,9 +163,13 @@ mod test_super {
     #[test]
     fn test_parse_years() {
         let input = r###"
-            2 2020-04-15
-            1 2020-04-16
-            4 2020-04-17
+            2020-04-15
+            2020-04-15
+            2020-04-16
+            2020-04-17
+            2020-04-17
+            2020-04-17
+            2020-04-17
         "###;
 
         let range = Range {
