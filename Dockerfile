@@ -1,6 +1,6 @@
 FROM rust:latest as builder
 
-WORKDIR /client
+WORKDIR /analyzer
 COPY . ./
 RUN cargo build --release
 
@@ -12,8 +12,6 @@ RUN apt-get update \
     && apt-get install -y git \
     && rm -rf /var/lib/apt/lists/* 
 
-COPY --from=builder /client/target/release/client /usr/local/bin/client
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod a+x /entrypoint.sh
+COPY --from=builder /analyzer/target/release/analyzer /usr/local/bin/analyzer
 WORKDIR /repo
-ENTRYPOINT [ "/entrypoint.sh" ]
+ENTRYPOINT [ "analyzer" ]

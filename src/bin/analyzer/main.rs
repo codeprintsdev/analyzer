@@ -10,8 +10,8 @@
 )]
 
 use anyhow::{Context, Result};
-use client::count_commits;
-use client::Parser;
+use codeprints_analyzer::count_commits;
+use codeprints_analyzer::Parser;
 use std::fs;
 use structopt::StructOpt;
 

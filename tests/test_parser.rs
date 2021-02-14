@@ -1,4 +1,4 @@
-use client::Parser;
+use analyzer::Parser;
 use serde_json;
 use std::fs;
 

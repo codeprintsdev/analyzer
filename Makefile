@@ -1,6 +1,6 @@
 # Needed SHELL since I'm using zsh
 SHELL := /bin/bash
-IMAGE_NAME := "codeprints/client"
+IMAGE_NAME := "codeprints/analyzer"
 
 .PHONY: help
 help: ## This help message

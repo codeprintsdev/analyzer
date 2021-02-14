@@ -1,6 +1,6 @@
-# codeprints client
+# codeprints analyzer
 
-A command-line client which analyzes local/private git repositories  
+A command-line tool which analyzes local/private git repositories  
 and generates a data file for [codeprints.dev](https://codeprints.dev/).
 
 ## Why?
@@ -9,7 +9,7 @@ A lot of code is not public on Github; especially commercial projects.
 Nevertheless there is demand for creating prints from a repository
 (e.g. to give them as a present to each team member after reaching a major milestone).
 
-This is why we offer a client that can be used locally without having to
+This is why we offer a standalone tool that can be used locally without having to
 make any code public or install any dependencies.
 
 ## Usage
@@ -18,7 +18,7 @@ make any code public or install any dependencies.
 2. Run the following command to generate a `codeprints.json` for the repo:
 
 ```
-docker run -v `pwd`:/repo codeprints/client
+docker run -v `pwd`:/repo codeprints/analyzer
 ```
 
 (This will not parse any sensitive data. It is merely a wrapper around
@@ -27,7 +27,11 @@ docker run -v `pwd`:/repo codeprints/client
 Alternatively you can also run the Rust binary without Docker:
 
 ```
-cargo install --git https://github.com/codeprintsdev/client
+# Install the tool
+cargo install --git https://github.com/codeprintsdev/analyzer
+
+# Use it inside any git repository
+codeprints-analyzer
 ```
 
 3. Upload the JSON file to codeprints.dev to render a print.
@@ -37,7 +41,7 @@ cargo install --git https://github.com/codeprintsdev/client
 You can set the start- and end-date of the output.
 
 ```
-docker run -v `pwd`:/repo codeprints/client --after "2020-12-24" --before "2021-02-10"
+docker run -v `pwd`:/repo codeprints/analyzer --after "2020-12-24" --before "2021-02-10"
 ```
 
 The syntax is exactly the same that `git` also uses.
@@ -49,7 +53,7 @@ If you work in a bigger team, you might want to filter the contributions by
 author. Here is how:
 
 ```
-docker run -v `pwd`:/repo codeprints/client --author "Matthias" --author "Octocat"
+docker run -v `pwd`:/repo codeprints/analyzer --author "Matthias" --author "Octocat"
 ```
 
 To get a list of all author names, run `git shortlog --summary --numbered --email`.
@@ -62,7 +66,7 @@ contributors who pushed/committed a patch to the repository.)
 To get an exhaustive list of options, run
 
 ```
-docker run codeprints/client --help
+docker run codeprints/analyzer --help
 ```
 
 ## Background: How the Github Contribution Timeline works

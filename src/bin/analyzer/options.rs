@@ -1,7 +1,7 @@
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(name = "client")]
+#[structopt(name = "codeprints-analyzer")]
 pub struct Opt {
     /// Limit the commits output to ones with author header lines
     /// that match the specified pattern.

@@ -1,22 +1,24 @@
 [package]
-name = "client"
-version = "0.1.0"
+name = "codeprints-analyzer"
+version = "0.2.0"
 authors = ["Codeprints <support@codeprints.dev>"]
 edition = "2018"
 license = "Apache-2.0/MIT"
-description = "Client to generate data about private repos for codeprints.dev"
-documentation = "https://github.com/codeprintsdev/client"
+description = "Tool to analyze data of git repositories for codeprints.dev"
+documentation = "https://github.com/codeprintsdev/analyzer"
 homepage = "codeprints.dev"
 keywords = [
-    "client",
+    "parser",
+    "analyzer",
+    "git",
     "github",
     "contributions",
     "codeprints",
 ]
 
 [[bin]]
-name = "client"
-path = "src/bin/client/main.rs"
+name = "analyzer"
+path = "src/bin/analyzer/main.rs"
 
 
 [dependencies]
