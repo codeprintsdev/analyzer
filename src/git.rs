@@ -6,7 +6,7 @@ pub fn count_commits(
     before: Option<String>,
     after: Option<String>,
     authors: Vec<String>,
-    commiters: Vec<String>,
+    committers: Vec<String>,
 ) -> Result<String> {
     let mut args = vec!["log", "--date=short", "--pretty=format:%ad"];
     if let Some(before) = &before {
@@ -21,7 +21,7 @@ pub fn count_commits(
         args.push("--author");
         args.push(author);
     }
-    for committer in &commiters {
+    for committer in &committers {
         args.push("--committer");
         args.push(committer);
     }
