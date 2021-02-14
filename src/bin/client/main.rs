@@ -18,15 +18,19 @@ use structopt::StructOpt;
 mod options;
 use options::Opt;
 
+const OUTPUT_FILE: &'static str = "codeprints.json";
+
 fn main() -> Result<()> {
     let opt = Opt::from_args();
 
+    print!("Analyzing commits in current repository...");
     let input = count_commits(opt.before, opt.after, opt.author, opt.committer)
         .context("Cannot read project history")?;
     let mut parser = Parser::new(input);
     let timeline = parser.parse()?;
     let output = serde_json::to_string_pretty(&timeline)?;
-    fs::write("codeprints.json", output)?;
-
+    fs::write(OUTPUT_FILE, output)?;
+    println!("done!");
+    println!("Output file: {}", OUTPUT_FILE);
     Ok(())
 }
