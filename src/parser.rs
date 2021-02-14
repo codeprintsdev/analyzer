@@ -56,7 +56,7 @@ impl Parser {
     /// Backfill missing days with zero commits
     fn backfill(year: i32, days: &mut HashMap<NaiveDate, usize>) {
         for d in NaiveDate::from_ymd(year, 1, 1).iter_days() {
-            if d == NaiveDate::from_ymd(year + 1, 1, 1) {
+            if d.year() != year {
                 break;
             }
             days.entry(d).or_insert(0);
