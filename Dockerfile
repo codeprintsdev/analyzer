@@ -15,3 +15,5 @@ RUN apt-get update \
 COPY --from=builder /analyzer/target/release/codeprints-analyzer /usr/local/bin/codeprints-analyzer
 WORKDIR /repo
 ENTRYPOINT [ "codeprints-analyzer" ]
+# The standard command parses the commits of a repository
+CMD ["run"]
