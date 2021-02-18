@@ -41,7 +41,7 @@ codeprints-analyzer
 You can set the start- and end-date of the output.
 
 ```
-docker run -v `pwd`:/repo codeprints/analyzer --after "2020-12-24" --before "2021-02-10"
+docker run -v `pwd`:/repo codeprints/analyzer run --after "2020-12-24" --before "2021-02-10"
 ```
 
 The syntax is exactly the same that `git` also uses.
@@ -53,13 +53,26 @@ If you work in a bigger team, you might want to filter the contributions by
 author. Here is how:
 
 ```
-docker run -v `pwd`:/repo codeprints/analyzer --author "Matthias" --author "Octocat"
+docker run -v `pwd`:/repo codeprints/analyzer run --author "Matthias" --author "Octocat"
 ```
 
 To get a list of all author names, run `git shortlog --summary --numbered --email`.
 
 (You can also filter by committers. The difference is subtle, but in contrast to authors, these are the
 contributors who pushed/committed a patch to the repository.)
+
+## Merging multiple codeprints output files
+
+Do you have multiple repositories that you want to analyze?
+No problem! Just run the tool in every repository folder.
+After that, copy the files into a single folder and run the following command:
+
+```
+docker run -v `pwd`:/repo codeprints/analyzer merge
+```
+
+This will merge all codeprints\_\*.json files in the `repo` directory into one file.
+(It will accumulate all contribution counts for each day.)
 
 ## More options
 
