@@ -46,28 +46,6 @@ impl ParseState {
     }
 }
 
-impl TryFrom<Timeline> for ParseState {
-    type Error = anyhow::Error;
-
-    fn try_from(timeline: Timeline) -> Result<Self> {
-        let mut state = ParseState::default();
-        for contribution in timeline.contributions {
-            let date = contribution.date;
-            let date = state.parse_date(&date)?;
-            let count = contribution.count;
-
-            if let Some(date) = date {
-                // Kinda ineffective to call these update functions in a loop
-                for _ in 0..count {
-                    state.update_years(date);
-                    state.update_days(date);
-                }
-            }
-        }
-        Ok(state)
-    }
-}
-
 /// Backfill missing days with zero commits
 fn backfill(year: i32, days: &mut HashMap<NaiveDate, usize>) {
     for d in NaiveDate::from_ymd(year, 1, 1).iter_days() {
