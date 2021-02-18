@@ -7,7 +7,7 @@ pub struct Day {
     pub date: NaiveDate,
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Year {
     pub year: String,
