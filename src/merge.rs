@@ -16,8 +16,20 @@ impl Merger {
         Merger { state }
     }
 
-    fn merge_single(&mut self, single: ParseState) -> Result<()> {
-        self.state = single;
+    fn merge_timeline(&mut self, timeline: &Timeline) -> Result<()> {
+        for contribution in &timeline.contributions {
+            let date = contribution.date.clone();
+            let date = self.state.parse_date(&date)?;
+            let count = contribution.count;
+
+            if let Some(date) = date {
+                // Kinda ineffective to call these update functions in a loop
+                for _ in 0..count {
+                    self.state.update_years(date);
+                    self.state.update_days(date);
+                }
+            }
+        }
         Ok(())
     }
 
@@ -26,8 +38,7 @@ impl Merger {
     /// the individual results.
     pub fn merge(&mut self, timelines: &[Timeline]) -> Result<Timeline> {
         for timeline in timelines {
-            let single = ParseState::try_from(timeline.clone())?;
-            self.merge_single(single)?;
+            self.merge_timeline(timeline)?
         }
         Ok(Timeline::try_from(&self.state)?)
     }
