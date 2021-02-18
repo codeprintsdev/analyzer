@@ -2,96 +2,16 @@ use crate::quartiles::quartiles;
 use crate::types::{Contribution, Contributions, Range, Timeline, Year};
 use anyhow::{Context, Result};
 use chrono::prelude::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, convert::TryFrom};
 
-/// A parser that converts git log output
-/// into the JSON format understood by the
-/// API of codeprints.dev.
-#[derive(Debug)]
-pub struct Parser {
-    input: String,
+/// The internal state of the parser
+#[derive(Debug, Default)]
+pub struct ParseState {
     years_map: HashMap<i32, Year>,
     days: HashMap<NaiveDate, usize>,
 }
 
-impl Parser {
-    /// Create a new parser that analyzes the given input
-    pub fn new(input: String) -> Self {
-        let years_map = HashMap::new();
-        let days = HashMap::new();
-
-        Parser {
-            input,
-            years_map,
-            days,
-        }
-    }
-
-    // Each cell in the timeline is shaded with one of 5 possible colors. These
-    // colors correspond to the quartiles of the normal distribution over the range
-    // [0, max(v)] where v is the sum of issues opened, pull requests proposed and
-    // commits authored per day.
-    // https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/
-    // https://github.community/t/the-color-coding-of-contribution-graph-is-showing-wrong-information/18572
-    fn get_intensity(quartiles: &[usize], commits: usize) -> usize {
-        for (index, quartile) in quartiles.iter().enumerate() {
-            if commits < *quartile {
-                return index - 1;
-            }
-        }
-        quartiles.len() - 1
-    }
-
-    fn map_color(intensity: usize) -> String {
-        match intensity {
-            1 => "var(--color-calendar-graph-day-L1-bg)",
-            2 => "var(--color-calendar-graph-day-L2-bg)",
-            3 => "var(--color-calendar-graph-day-L3-bg)",
-            4 => "var(--color-calendar-graph-day-L4-bg)",
-            _ => "var(--color-calendar-graph-day-bg)",
-        }
-        .to_string()
-    }
-
-    /// Backfill missing days with zero commits
-    fn backfill(year: i32, days: &mut HashMap<NaiveDate, usize>) {
-        for d in NaiveDate::from_ymd(year, 1, 1).iter_days() {
-            if d.year() != year {
-                break;
-            }
-            days.entry(d).or_insert(0);
-        }
-    }
-
-    fn create_contributions(
-        &self,
-        days: &HashMap<NaiveDate, usize>,
-        quartiles: &[usize],
-    ) -> Vec<Contribution> {
-        let mut contributions = Vec::new();
-        for (date, commits) in days {
-            let intensity = Self::get_intensity(&quartiles, *commits);
-            let color = Self::map_color(intensity);
-
-            contributions.push(Contribution {
-                date: date.format("%Y-%m-%d").to_string(),
-                count: *commits,
-                color,
-                intensity,
-            });
-        }
-        contributions
-    }
-
-    fn parse_date(&self, line: &str) -> Result<Option<NaiveDate>> {
-        if line.trim().is_empty() {
-            // Empty lines are allowed, but skipped
-            return Ok(None);
-        }
-        let date: NaiveDate = line.parse().context(format!("Invalid date {}", line))?;
-        Ok(Some(date))
-    }
-
+impl ParseState {
     /// Add a single day to the map of years
     fn update_years(&mut self, date: NaiveDate) {
         let y = date.year();
@@ -116,34 +36,113 @@ impl Parser {
         *self.days.entry(date).or_insert(0) += 1;
     }
 
-    /// Execute the parsing step
-    pub fn parse(&mut self) -> Result<Timeline> {
-        let input = self.input.clone();
-        for line in input.lines() {
-            let day = self.parse_date(&line)?;
-            if let Some(d) = day {
-                self.update_days(d);
-                self.update_years(d);
+    fn parse_date(&self, line: &str) -> Result<Option<NaiveDate>> {
+        if line.trim().is_empty() {
+            // Empty lines are allowed, but skipped
+            return Ok(None);
+        }
+        let date: NaiveDate = line.parse().context(format!("Invalid date {}", line))?;
+        Ok(Some(date))
+    }
+}
+
+impl TryFrom<Timeline> for ParseState {
+    type Error = anyhow::Error;
+
+    fn try_from(timeline: Timeline) -> Result<Self> {
+        let mut state = ParseState::default();
+        for contribution in timeline.contributions {
+            let date = contribution.date;
+            let date = state.parse_date(&date)?;
+            let count = contribution.count;
+
+            if let Some(date) = date {
+                // Kinda ineffective to call these update functions in a loop
+                for _ in 0..count {
+                    state.update_years(date);
+                    state.update_days(date);
+                }
             }
         }
+        Ok(state)
+    }
+}
 
-        let mut years: Vec<Year> = self.years_map.values().cloned().collect();
+/// Backfill missing days with zero commits
+fn backfill(year: i32, days: &mut HashMap<NaiveDate, usize>) {
+    for d in NaiveDate::from_ymd(year, 1, 1).iter_days() {
+        if d.year() != year {
+            break;
+        }
+        days.entry(d).or_insert(0);
+    }
+}
+
+// Each cell in the timeline is shaded with one of 5 possible colors. These
+// colors correspond to the quartiles of the normal distribution over the range
+// [0, max(v)] where v is the sum of issues opened, pull requests proposed and
+// commits authored per day.
+// https://bd808.com/blog/2013/04/17/hacking-github-contributions-calendar/
+// https://github.community/t/the-color-coding-of-contribution-graph-is-showing-wrong-information/18572
+fn get_intensity(quartiles: &[usize], commits: usize) -> usize {
+    for (index, quartile) in quartiles.iter().enumerate() {
+        if commits < *quartile {
+            return index - 1;
+        }
+    }
+    quartiles.len() - 1
+}
+
+fn map_color(intensity: usize) -> String {
+    match intensity {
+        1 => "var(--color-calendar-graph-day-L1-bg)",
+        2 => "var(--color-calendar-graph-day-L2-bg)",
+        3 => "var(--color-calendar-graph-day-L3-bg)",
+        4 => "var(--color-calendar-graph-day-L4-bg)",
+        _ => "var(--color-calendar-graph-day-bg)",
+    }
+    .to_string()
+}
+
+fn create_contributions(
+    days: &HashMap<NaiveDate, usize>,
+    quartiles: &[usize],
+) -> Vec<Contribution> {
+    let mut contributions = Vec::new();
+    for (date, commits) in days {
+        let intensity = get_intensity(&quartiles, *commits);
+        let color = map_color(intensity);
+
+        contributions.push(Contribution {
+            date: date.format("%Y-%m-%d").to_string(),
+            count: *commits,
+            color,
+            intensity,
+        });
+    }
+    contributions
+}
+
+impl TryFrom<&ParseState> for Timeline {
+    type Error = anyhow::Error;
+    fn try_from(state: &ParseState) -> Result<Self> {
+        let mut years: Vec<Year> = state.years_map.values().cloned().collect();
         years.sort();
         years.reverse();
 
         let mut contributions = Contributions::new();
         for year in &years {
-            let mut year_contribs: HashMap<NaiveDate, usize> = self
+            let mut year_contribs: HashMap<NaiveDate, usize> = state
                 .days
                 .clone()
                 .into_iter()
                 .filter(|(date, _commits)| date.year().to_string() == year.year)
                 .collect();
-            Self::backfill(year.year.parse::<i32>()?, &mut year_contribs);
+            backfill(year.year.parse::<i32>()?, &mut year_contribs);
             let commits: Vec<usize> = year_contribs.values().cloned().collect();
             let quartiles = quartiles(&commits)?;
 
-            let mut contribs = self.create_contributions(&year_contribs, &quartiles);
+            let mut contribs = create_contributions(&year_contribs, &quartiles);
             contributions.append(&mut contribs);
         }
         contributions.sort();
@@ -155,8 +154,41 @@ impl Parser {
     }
 }
 
+/// A parser that converts git log output
+/// into the JSON format understood by the
+/// API of codeprints.dev.
+#[derive(Debug, Default)]
+pub struct Parser {
+    input: String,
+    state: ParseState,
+}
+
+impl Parser {
+    /// Create a new parser that analyzes the given input
+    pub fn new(input: String) -> Self {
+        Parser {
+            input,
+            ..Default::default()
+        }
+    }
+
+    /// Execute the parsing step
+    pub fn parse(&mut self) -> Result<Timeline> {
+        let input = self.input.clone();
+        for line in input.lines() {
+            let day = self.state.parse_date(&line)?;
+            if let Some(d) = day {
+                self.state.update_days(d);
+                self.state.update_years(d);
+            }
+        }
+
+        Ok(Timeline::try_from(&self.state)?)
+    }
+}
+
 #[cfg(test)]
-mod test_super {
+mod test {
 
     use super::*;
 
@@ -188,12 +220,12 @@ mod test_super {
     #[test]
     fn test_intensities() {
         let quartiles = [0, 1, 11, 22, 32];
-        assert_eq!(0, Parser::get_intensity(&quartiles, 0));
-        assert_eq!(1, Parser::get_intensity(&quartiles, 1));
-        assert_eq!(1, Parser::get_intensity(&quartiles, 10));
-        assert_eq!(2, Parser::get_intensity(&quartiles, 18));
-        assert_eq!(3, Parser::get_intensity(&quartiles, 22));
-        assert_eq!(4, Parser::get_intensity(&quartiles, 32));
-        assert_eq!(4, Parser::get_intensity(&quartiles, 100));
+        assert_eq!(0, get_intensity(&quartiles, 0));
+        assert_eq!(1, get_intensity(&quartiles, 1));
+        assert_eq!(1, get_intensity(&quartiles, 10));
+        assert_eq!(2, get_intensity(&quartiles, 18));
+        assert_eq!(3, get_intensity(&quartiles, 22));
+        assert_eq!(4, get_intensity(&quartiles, 32));
+        assert_eq!(4, get_intensity(&quartiles, 100));
     }
 }
