@@ -16,21 +16,39 @@ use std::fs;
 use structopt::StructOpt;
 
 mod options;
-use options::Opt;
+use options::Command;
 
 const OUTPUT_FILE: &'static str = "codeprints.json";
 
 fn main() -> Result<()> {
-    let opt = Opt::from_args();
+    let opt = Command::from_args();
 
-    print!("Analyzing commits in current repository...");
-    let input = count_commits(opt.before, opt.after, opt.author, opt.committer)
-        .context("Cannot read project history. Make sure there is no typo in the command")?;
-    let mut parser = Parser::new(input);
-    let timeline = parser.parse()?;
-    let output = serde_json::to_string_pretty(&timeline)?;
-    fs::write(OUTPUT_FILE, output)?;
-    println!("done!");
-    println!("Output file: {}", OUTPUT_FILE);
+    match opt {
+        Command::Run {
+            before,
+            after,
+            author,
+            committer,
+        } => {
+            print!("Analyzing commits in current repository...");
+            let input = count_commits(before, after, author, committer).context(
+                "Cannot read project history. Make sure there is no typo in the command",
+            )?;
+            let mut parser = Parser::new(input);
+            let timeline = parser.parse()?;
+            let output = serde_json::to_string_pretty(&timeline)?;
+            fs::write(OUTPUT_FILE, output)?;
+            println!("done!");
+            println!("Output file: {}", OUTPUT_FILE);
+        }
+        Command::Merge {} => {
+            // Find all `codeprints*.json` files in the current directory
+            // using glob.
+            // Read each one into memory
+            // Merge the results together
+            // Write a `codeprints_merged.json` file
+            unimplemented!();
+        }
+    };
     Ok(())
 }
