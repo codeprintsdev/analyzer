@@ -13,7 +13,7 @@ pub struct ParseState {
 
 impl ParseState {
     /// Add a single day to the map of years
-    fn update_years(&mut self, date: NaiveDate) {
+    pub fn update_years(&mut self, date: NaiveDate) {
         let y = date.year();
         let mut year = self.years_map.entry(y).or_insert(Year {
             year: y.to_string(),
@@ -32,11 +32,11 @@ impl ParseState {
     }
 
     /// Add a single day to the map of days
-    fn update_days(&mut self, date: NaiveDate) {
+    pub fn update_days(&mut self, date: NaiveDate) {
         *self.days.entry(date).or_insert(0) += 1;
     }
 
-    fn parse_date(&self, line: &str) -> Result<Option<NaiveDate>> {
+    pub fn parse_date(&self, line: &str) -> Result<Option<NaiveDate>> {
         if line.trim().is_empty() {
             // Empty lines are allowed, but skipped
             return Ok(None);
