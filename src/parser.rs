@@ -18,17 +18,22 @@ impl ParseState {
         let mut year = self.years_map.entry(y).or_insert(Year {
             year: y.to_string(),
             total: 0,
-            range: Range::default(),
+            // range: Range::default,
+            // Always show full year
+            range: Range {
+                start: format!("{}-01-01", y),
+                end: format!("{}-12-31", y),
+            },
         });
         year.total += 1;
 
-        let date = date.format("%Y-%m-%d").to_string();
-        if year.range.start.is_empty() || date < year.range.start {
-            year.range.start = date.clone();
-        }
-        if year.range.end.is_empty() || date > year.range.end {
-            year.range.end = date
-        }
+        // let date = date.format("%Y-%m-%d").to_string();
+        // if year.range.start.is_empty() || date < year.range.start {
+        //     year.range.start = date.clone();
+        // }
+        // if year.range.end.is_empty() || date > year.range.end {
+        //     year.range.end = date
+        // }
     }
 
     /// Add a single day to the map of days
