@@ -31,10 +31,16 @@ fn main() -> Result<()> {
             committer,
         } => {
             print!("Analyzing commits in current repository...");
-            let input = count_commits(before, after, author, committer).context(
+            let input = count_commits(&before, &after, author, committer).context(
                 "Cannot read project history. Make sure there is no typo in the command",
             )?;
             let mut parser = Parser::new(input);
+            if let Some(before) = before {
+                parser.set_before(before)?;
+            }
+            if let Some(after) = after {
+                parser.set_after(after)?;
+            }
             let timeline = parser.parse()?;
             let output = serde_json::to_string_pretty(&timeline)?;
             fs::write(OUTPUT_FILE, output)?;

@@ -1,28 +1,38 @@
-use crate::quartiles::quartiles;
 use crate::types::{Contribution, Contributions, Range, Timeline, Year};
-use anyhow::{Context, Result};
+use crate::{git, quartiles::quartiles};
+use anyhow::Result;
 use chrono::prelude::*;
-use std::{collections::HashMap, convert::TryFrom};
+use std::{cmp::{max, min}, collections::HashMap, convert::TryFrom};
 
 /// The internal state of the parser
 #[derive(Debug, Default)]
 pub struct ParseState {
     years_map: HashMap<i32, Year>,
     days: HashMap<NaiveDate, usize>,
+    before: Option<NaiveDate>,
+    after: Option<NaiveDate>,
 }
 
 impl ParseState {
     /// Add a single day to the map of years
     pub fn update_years(&mut self, date: NaiveDate) {
         let y = date.year();
+        let start = match self.before {
+            Some(before) => max(before, date),
+            None => date,
+        };
+        let end = match self.after {
+            Some(after) => min(after, date),
+            None => date,
+        };
         let mut year = self.years_map.entry(y).or_insert(Year {
             year: y.to_string(),
             total: 0,
             // range: Range::default,
             // Always show full year
             range: Range {
-                start: format!("{}-01-01", y),
-                end: format!("{}-12-31", y),
+                start: start.format("%y-%m-%d").to_string(),
+                end: end.format("%y-%m-%d").to_string(),
             },
         });
         year.total += 1;
@@ -39,15 +49,6 @@ impl ParseState {
     /// Add a single day to the map of days
     pub fn update_days(&mut self, date: NaiveDate) {
         *self.days.entry(date).or_insert(0) += 1;
-    }
-
-    pub fn parse_date(&self, line: &str) -> Result<Option<NaiveDate>> {
-        if line.trim().is_empty() {
-            // Empty lines are allowed, but skipped
-            return Ok(None);
-        }
-        let date: NaiveDate = line.parse().context(format!("Invalid date {}", line))?;
-        Ok(Some(date))
     }
 }
 
@@ -155,12 +156,49 @@ impl Parser {
         }
     }
 
+    /// Set the minimum date of the timeline. Commits older than the given date
+    /// will not be counted and won't be in the final output
+    pub fn set_before(&mut self, before: String) -> Result<&mut Self> {
+        let before = git::parse_date(&before)?;
+        if let Some(before) = before {
+            self.state.before = Some(before);
+        }
+        Ok(self)
+    }
+
+    /// Set the maximum date of the timeline. Commits newer than the given date
+    /// will not be counted and won't be in the final output
+    pub fn set_after(&mut self, after: String) -> Result<&mut Self> {
+        let after = git::parse_date(&after)?;
+        if let Some(after) = after {
+            self.state.after = Some(after);
+        }
+        Ok(self)
+    }
+
+    fn outside_date_range(&self, day: NaiveDate) -> bool {
+        if let Some(before) = self.state.before {
+            if day < before {
+                return true;
+            }
+        }
+        if let Some(after) = self.state.after {
+            if day > after {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Execute the parsing step
     pub fn parse(&mut self) -> Result<Timeline> {
         let input = self.input.clone();
         for line in input.lines() {
-            let day = self.state.parse_date(&line)?;
+            let day = git::parse_date(&line)?;
             if let Some(d) = day {
+                if self.outside_date_range(d) {
+                    continue;
+                }
                 self.state.update_days(d);
                 self.state.update_years(d);
             }
