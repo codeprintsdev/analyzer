@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use crate::{parser::ParseState, types::Timeline};
+use crate::{git, parser::ParseState, types::Timeline};
 use anyhow::Result;
 
 /// Merger merges multiple timelines into one
@@ -19,7 +19,7 @@ impl Merger {
     fn merge_timeline(&mut self, timeline: &Timeline) -> Result<()> {
         for contribution in &timeline.contributions {
             let date = contribution.date.clone();
-            let date = self.state.parse_date(&date)?;
+            let date = git::parse_date(&date)?;
             let count = contribution.count;
 
             if let Some(date) = date {
