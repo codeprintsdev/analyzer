@@ -18,6 +18,7 @@ pub struct Year {
 pub type Years = Vec<Year>;
 pub type Contributions = Vec<Contribution>;
 
+/// A timeline represents a codeprints.json file's contents
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Timeline {

@@ -21,3 +21,4 @@ mod types;
 pub use crate::git::count_commits;
 pub use crate::merge::Merger;
 pub use crate::parser::Parser;
+pub use crate::types::Timeline as Timeline;
