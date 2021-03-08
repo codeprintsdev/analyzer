@@ -1,8 +1,12 @@
 use crate::types::{Contribution, Contributions, Range, Timeline, Year};
 use crate::{git, quartiles::quartiles};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::prelude::*;
-use std::{cmp::{max, min}, collections::HashMap, convert::TryFrom};
+use std::{
+    cmp::{max, min},
+    collections::HashMap,
+    convert::TryFrom,
+};
 
 /// The internal state of the parser
 #[derive(Debug, Default)]
@@ -17,33 +21,23 @@ impl ParseState {
     /// Add a single day to the map of years
     pub fn update_years(&mut self, date: NaiveDate) {
         let y = date.year();
-        let start = match self.before {
-            Some(before) => max(before, date),
-            None => date,
-        };
-        let end = match self.after {
-            Some(after) => min(after, date),
-            None => date,
-        };
+        let date_str = date.format("%Y-%m-%d").to_string();
+
         let mut year = self.years_map.entry(y).or_insert(Year {
             year: y.to_string(),
             total: 0,
             // range: Range::default,
             // Always show full year
             range: Range {
-                start: start.format("%y-%m-%d").to_string(),
-                end: end.format("%y-%m-%d").to_string(),
+                start: date_str.clone(),
+                end: date_str.clone(),
             },
         });
-        year.total += 1;
 
-        // let date = date.format("%Y-%m-%d").to_string();
-        // if year.range.start.is_empty() || date < year.range.start {
-        //     year.range.start = date.clone();
-        // }
-        // if year.range.end.is_empty() || date > year.range.end {
-        //     year.range.end = date
-        // }
+        year.range.start = min(year.range.start.clone(), date_str.clone());
+        year.range.end = max(year.range.end.clone(), date_str);
+
+        year.total += 1;
     }
 
     /// Add a single day to the map of days
@@ -53,13 +47,19 @@ impl ParseState {
 }
 
 /// Backfill missing days with zero commits
-fn backfill(year: i32, days: &mut HashMap<NaiveDate, usize>) {
+fn backfill(year: i32, days: &mut HashMap<NaiveDate, usize>) -> Result<()> {
+    let last_day = days
+        .keys()
+        .max_by_key(|key| *key)
+        .cloned()
+        .context("cannot get last day for backfilling")?;
     for d in NaiveDate::from_ymd(year, 1, 1).iter_days() {
-        if d.year() != year {
+        if d > last_day {
             break;
         }
         days.entry(d).or_insert(0);
     }
+    Ok(())
 }
 
 // Each cell in the timeline is shaded with one of 5 possible colors. These
@@ -122,7 +122,7 @@ impl TryFrom<&ParseState> for Timeline {
                 .into_iter()
                 .filter(|(date, _commits)| date.year().to_string() == year.year)
                 .collect();
-            backfill(year.year.parse::<i32>()?, &mut year_contribs);
+            backfill(year.year.parse::<i32>()?, &mut year_contribs)?;
             let commits: Vec<usize> = year_contribs.values().cloned().collect();
             let quartiles = quartiles(&commits)?;
 
@@ -176,14 +176,14 @@ impl Parser {
         Ok(self)
     }
 
-    fn outside_date_range(&self, day: NaiveDate) -> bool {
+    fn out_of_range(&self, day: NaiveDate) -> bool {
         if let Some(before) = self.state.before {
-            if day < before {
+            if day >= before {
                 return true;
             }
         }
         if let Some(after) = self.state.after {
-            if day > after {
+            if day <= after {
                 return true;
             }
         }
@@ -196,7 +196,7 @@ impl Parser {
         for line in input.lines() {
             let day = git::parse_date(&line)?;
             if let Some(d) = day {
-                if self.outside_date_range(d) {
+                if self.out_of_range(d) {
                     continue;
                 }
                 self.state.update_days(d);
@@ -235,6 +235,34 @@ mod test {
             range: range,
         }];
         let mut parser = Parser::new(input.to_string());
+        assert_eq!(parser.parse().unwrap().years, expected);
+    }
+
+    #[test]
+    fn test_parse_years_range() {
+        let input = r###"
+            2020-04-15
+            2020-04-15
+            2020-04-16
+            2020-04-17
+            2020-04-17
+            2020-04-17
+            2020-04-17
+            2020-04-18
+        "###;
+
+        let range = Range {
+            start: "2020-04-16".to_string(),
+            end: "2020-04-17".to_string(),
+        };
+        let expected = vec![Year {
+            year: "2020".to_string(),
+            total: 5,
+            range: range,
+        }];
+        let mut parser = Parser::new(input.to_string());
+        parser.set_before("2020-04-18".into()).unwrap();
+        parser.set_after("2020-04-15".into()).unwrap();
         assert_eq!(parser.parse().unwrap().years, expected);
     }
 
