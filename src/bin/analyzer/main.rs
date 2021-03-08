@@ -10,15 +10,23 @@
 )]
 
 use anyhow::{Context, Result};
-use codeprints_analyzer::count_commits;
 use codeprints_analyzer::Parser;
+use codeprints_analyzer::Timeline;
+use codeprints_analyzer::{count_commits, Merger};
+use glob::glob;
 use std::fs;
 use structopt::StructOpt;
 
 mod options;
 use options::Command;
 
-const OUTPUT_FILE: &'static str = "codeprints.json";
+fn write(timeline: &Timeline, output_file: &str) -> Result<()> {
+    let output = serde_json::to_string_pretty(&timeline)?;
+    fs::write(output_file, output)?;
+    println!("done!");
+    println!("Output file: {}", output_file);
+    Ok(())
+}
 
 fn main() -> Result<()> {
     let opt = Command::from_args();
@@ -42,18 +50,26 @@ fn main() -> Result<()> {
                 parser.set_after(after)?;
             }
             let timeline = parser.parse()?;
-            let output = serde_json::to_string_pretty(&timeline)?;
-            fs::write(OUTPUT_FILE, output)?;
-            println!("done!");
-            println!("Output file: {}", OUTPUT_FILE);
+
+            write(&timeline, "codeprints.json")?;
         }
         Command::Merge {} => {
             // Find all `codeprints*.json` files in the current directory
             // using glob.
-            // Read each one into memory
-            // Merge the results together
-            // Write a `codeprints_merged.json` file
-            unimplemented!();
+            let mut merger = Merger::new();
+            for entry in glob("codeprints*.json")? {
+                match entry {
+                    Ok(path) => {
+                        println!("Merging {}", path.display());
+                        let input = fs::read_to_string(path)?;
+                        let mut parser = Parser::new(input);
+                        let timeline = parser.parse()?;
+                        merger.merge_timeline(&timeline)?;
+                    }
+                    Err(e) => println!("{:?}", e),
+                }
+            }
+            write(&merger.timeline()?, "codeprints_merged.json")?;
         }
     };
     Ok(())

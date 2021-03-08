@@ -16,7 +16,8 @@ impl Merger {
         Merger { state }
     }
 
-    fn merge_timeline(&mut self, timeline: &Timeline) -> Result<()> {
+    /// Merge a single timeline
+    pub fn merge_timeline(&mut self, timeline: &Timeline) -> Result<()> {
         for contribution in &timeline.contributions {
             let date = contribution.date.clone();
             let date = git::parse_date(&date)?;
@@ -42,7 +43,13 @@ impl Merger {
         }
         Ok(Timeline::try_from(&self.state)?)
     }
+
+    /// Return the merged timeline of all inputs
+    pub fn timeline(&self) -> Result<Timeline> {
+        Ok(Timeline::try_from(&self.state)?)
+    }
 }
+
 
 #[cfg(test)]
 mod test {
