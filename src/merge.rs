@@ -62,8 +62,8 @@ mod test {
         let year = "2020".into();
         let total = 1234;
         let range = Range {
-            start: "2020-02-01".into(),
-            end: "2020-03-02".into(),
+            start: "2020-01-01".into(),
+            end: "2020-01-02".into(),
         };
 
         let year1 = Year { year, total, range };
@@ -88,6 +88,12 @@ mod test {
         timeline.contributions = contributions;
 
         let mut merger = Merger::new();
-        assert_eq!(merger.merge(&[timeline.clone()]).unwrap(), timeline);
+        let merged = merger.merge(&[timeline.clone()]).unwrap();
+        assert_eq!(merged.years.len(), 1);
+        let year = &merged.years[0];
+        assert_eq!(year.year, "2020");
+        assert_eq!(year.total, 1234);
+        assert_eq!(year.range.start, "2020-01-01");
+        assert_eq!(year.range.end, "2020-01-02");
     }
 }
