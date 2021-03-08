@@ -19,7 +19,7 @@ pub struct ParseState {
 
 impl ParseState {
     /// Add a single day to the map of years
-    pub fn update_years(&mut self, date: NaiveDate) {
+    pub fn update_years(&mut self, date: NaiveDate, contributions_to_add: usize) {
         let y = date.year();
         let date_str = date.format("%Y-%m-%d").to_string();
 
@@ -37,12 +37,12 @@ impl ParseState {
         year.range.start = min(year.range.start.clone(), date_str.clone());
         year.range.end = max(year.range.end.clone(), date_str);
 
-        year.total += 1;
+        year.total += contributions_to_add;
     }
 
     /// Add a single day to the map of days
-    pub fn update_days(&mut self, date: NaiveDate) {
-        *self.days.entry(date).or_insert(0) += 1;
+    pub fn update_days(&mut self, date: NaiveDate, contributions_to_add: usize) {
+        *self.days.entry(date).or_insert(0) += contributions_to_add;
     }
 }
 
@@ -199,8 +199,8 @@ impl Parser {
                 if self.out_of_range(d) {
                     continue;
                 }
-                self.state.update_days(d);
-                self.state.update_years(d);
+                self.state.update_days(d, 1);
+                self.state.update_years(d, 1);
             }
         }
 

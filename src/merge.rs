@@ -18,17 +18,15 @@ impl Merger {
 
     /// Merge a single timeline
     pub fn merge_timeline(&mut self, timeline: &Timeline) -> Result<()> {
+        ///TODO: make sure that all days are filled with 0 between start and end
         for contribution in &timeline.contributions {
             let date = contribution.date.clone();
             let date = git::parse_date(&date)?;
             let count = contribution.count;
 
             if let Some(date) = date {
-                // Kinda ineffective to call these update functions in a loop
-                for _ in 0..count {
-                    self.state.update_years(date);
-                    self.state.update_days(date);
-                }
+                self.state.update_years(date, count);
+                self.state.update_days(date, count);
             }
         }
         Ok(())
@@ -103,4 +101,51 @@ mod test {
         assert_eq!(year.range.start, "2020-01-01");
         assert_eq!(year.range.end, "2020-01-02");
     }
+
+    #[test]
+    fn test_merge_multiple() {
+        let mut timeline1 = Timeline::default();
+        let mut timeline2 = Timeline::default();
+
+        let range1 = Range {
+            start: "2020-01-01".into(),
+            end: "2020-01-02".into(),
+        };
+        let range2 = Range {
+            start: "2020-01-01".into(),
+            end: "2020-01-03".into(),
+        };
+
+        let year2 = Year { year: "2020".into(), total: 0, range: range2 };
+        let year1 = Year { year: "2020".into(), total: 123, range: range1 };
+        timeline1.years = vec![year1];
+        timeline2.years = vec![year2];
+
+        let contributions = vec![
+            Contribution {
+                date: "2020-01-01".into(),
+                count: 1000,
+                color: "".into(),
+                intensity: 4,
+            },
+            Contribution {
+                date: "2020-01-02".into(),
+                count: 234,
+                color: "".into(),
+                intensity: 4,
+            },
+        ];
+
+        timeline1.contributions = contributions.clone();
+        timeline2.contributions = contributions.clone();
+
+        let mut merger = Merger::new();
+        let merged = merger.merge(&[timeline1.clone(),timeline2.clone()]).unwrap();
+        assert_eq!(merged.years.len(), 1);
+        let year = &merged.years[0];
+        assert_eq!(year.year, "2020");
+        assert_eq!(year.total, 2468);
+        assert_eq!(year.range.start, "2020-01-01");
+        assert_eq!(year.range.end, "2020-01-03");
+    }    
 }
