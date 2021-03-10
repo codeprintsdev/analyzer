@@ -232,7 +232,7 @@ mod test {
         let expected = vec![Year {
             year: "2020".to_string(),
             total: 7,
-            range: range,
+            range,
         }];
         let mut parser = Parser::new(input.to_string());
         assert_eq!(parser.parse().unwrap().years, expected);
@@ -258,7 +258,7 @@ mod test {
         let expected = vec![Year {
             year: "2020".to_string(),
             total: 5,
-            range: range,
+            range,
         }];
         let mut parser = Parser::new(input.to_string());
         parser.set_before("2020-04-18".into()).unwrap();
