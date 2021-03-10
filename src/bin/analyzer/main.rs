@@ -10,9 +10,10 @@
 )]
 
 use anyhow::{Context, Result};
+use codeprints_analyzer::git;
+use codeprints_analyzer::Merger;
 use codeprints_analyzer::Parser;
 use codeprints_analyzer::Timeline;
-use codeprints_analyzer::{count_commits, Merger};
 use glob::glob;
 use std::fs;
 use structopt::StructOpt;
@@ -39,7 +40,7 @@ fn main() -> Result<()> {
             committer,
         } => {
             print!("Analyzing commits in current repository...");
-            let input = count_commits(&before, &after, author, committer).context(
+            let input = git::count_commits(&before, &after, author, committer).context(
                 "Cannot read project history. Make sure there is no typo in the command",
             )?;
             let mut parser = Parser::new(input);
@@ -51,7 +52,8 @@ fn main() -> Result<()> {
             }
             let timeline = parser.parse()?;
 
-            write(&timeline, "codeprints.json")?;
+            let sha = git::sha()?;
+            write(&timeline, &format!("codeprints_{}.json", sha))?;
         }
         Command::Merge {} => {
             // Find all `codeprints*.json` files in the current directory
