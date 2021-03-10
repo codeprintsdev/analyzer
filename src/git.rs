@@ -36,7 +36,7 @@ pub fn parse_date(line: &str) -> Result<Option<NaiveDate>> {
         // Empty lines are allowed, but skipped
         return Ok(None);
     }
-    let date: NaiveDate = line.parse().context(format!("Invalid date {}", line))?;
+    let date: NaiveDate = line.parse().context(format!("Invalid date: {}", line))?;
     Ok(Some(date))
 }
 

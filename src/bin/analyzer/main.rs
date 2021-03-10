@@ -64,8 +64,7 @@ fn main() -> Result<()> {
                     Ok(path) => {
                         println!("Merging {}", path.display());
                         let input = fs::read_to_string(path)?;
-                        let mut parser = Parser::new(input);
-                        let timeline = parser.parse()?;
+                        let timeline: Timeline = serde_json::from_str(&input)?;
                         merger.merge_timeline(&timeline)?;
                     }
                     Err(e) => println!("{:?}", e),
