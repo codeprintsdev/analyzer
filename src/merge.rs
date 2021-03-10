@@ -18,7 +18,7 @@ impl Merger {
 
     /// Merge a single timeline
     pub fn merge_timeline(&mut self, timeline: &Timeline) -> Result<()> {
-        ///TODO: make sure that all days are filled with 0 between start and end
+        // TODO: make sure that all days are filled with 0 between start and end
         for contribution in &timeline.contributions {
             let date = contribution.date.clone();
             let date = git::parse_date(&date)?;
@@ -47,7 +47,6 @@ impl Merger {
         Ok(Timeline::try_from(&self.state)?)
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -116,12 +115,21 @@ mod test {
             end: "2020-01-03".into(),
         };
 
-        let year2 = Year { year: "2020".into(), total: 0, range: range2 };
-        let year1 = Year { year: "2020".into(), total: 123, range: range1 };
+        let year1 = Year {
+            year: "2020".into(),
+            total: 1234,
+            range: range1,
+        };
         timeline1.years = vec![year1];
+
+        let year2 = Year {
+            year: "2020".into(),
+            total: 6,
+            range: range2,
+        };
         timeline2.years = vec![year2];
 
-        let contributions = vec![
+        let contributions1 = vec![
             Contribution {
                 date: "2020-01-01".into(),
                 count: 1000,
@@ -136,16 +144,39 @@ mod test {
             },
         ];
 
-        timeline1.contributions = contributions.clone();
-        timeline2.contributions = contributions.clone();
+        let contributions2 = vec![
+            Contribution {
+                date: "2020-01-01".into(),
+                count: 0,
+                color: "".into(),
+                intensity: 0,
+            },
+            Contribution {
+                date: "2020-01-02".into(),
+                count: 5,
+                color: "".into(),
+                intensity: 4,
+            },
+            Contribution {
+                date: "2020-01-03".into(),
+                count: 1,
+                color: "".into(),
+                intensity: 1,
+            },
+        ];
+
+        timeline1.contributions = contributions1.clone();
+        timeline2.contributions = contributions2.clone();
 
         let mut merger = Merger::new();
-        let merged = merger.merge(&[timeline1.clone(),timeline2.clone()]).unwrap();
+        let merged = merger
+            .merge(&[timeline1.clone(), timeline2.clone()])
+            .unwrap();
         assert_eq!(merged.years.len(), 1);
         let year = &merged.years[0];
         assert_eq!(year.year, "2020");
-        assert_eq!(year.total, 2468);
+        assert_eq!(year.total, 1240);
         assert_eq!(year.range.start, "2020-01-01");
         assert_eq!(year.range.end, "2020-01-03");
-    }    
+    }
 }

@@ -22,7 +22,9 @@ pub type Contributions = Vec<Contribution>;
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Timeline {
+    /// Years belonging to the timeline
     pub years: Years,
+    /// Contributions belonging to the timeline
     pub contributions: Contributions,
 }
 
