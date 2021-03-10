@@ -92,7 +92,7 @@ mod test {
         timeline.contributions = contributions;
 
         let mut merger = Merger::new();
-        let merged = merger.merge(&[timeline.clone()]).unwrap();
+        let merged = merger.merge(&[timeline]).unwrap();
         assert_eq!(merged.years.len(), 1);
         let year = &merged.years[0];
         assert_eq!(year.year, "2020");
@@ -165,13 +165,11 @@ mod test {
             },
         ];
 
-        timeline1.contributions = contributions1.clone();
-        timeline2.contributions = contributions2.clone();
+        timeline1.contributions = contributions1;
+        timeline2.contributions = contributions2;
 
         let mut merger = Merger::new();
-        let merged = merger
-            .merge(&[timeline1.clone(), timeline2.clone()])
-            .unwrap();
+        let merged = merger.merge(&[timeline1, timeline2]).unwrap();
         assert_eq!(merged.years.len(), 1);
         let year = &merged.years[0];
         assert_eq!(year.year, "2020");
