@@ -30,7 +30,7 @@ pub fn count_commits(
     Ok(commits)
 }
 
-// Parse a date from the git log
+/// Parse a date from the git log
 pub fn parse_date(line: &str) -> Result<Option<NaiveDate>> {
     if line.trim().is_empty() {
         // Empty lines are allowed, but skipped
@@ -38,4 +38,10 @@ pub fn parse_date(line: &str) -> Result<Option<NaiveDate>> {
     }
     let date: NaiveDate = line.parse().context(format!("Invalid date {}", line))?;
     Ok(Some(date))
+}
+
+/// Get the current git commit sha
+pub fn sha() -> Result<String> {
+    let sha = cmd("git", &["rev-parse", "--short", "HEAD"]).read()?;
+    Ok(sha)
 }
