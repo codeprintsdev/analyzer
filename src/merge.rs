@@ -4,7 +4,7 @@ use crate::{git, parser::ParseState, types::Timeline};
 use anyhow::Result;
 
 /// Merger merges multiple timelines into one
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Merger {
     state: ParseState,
 }
@@ -39,12 +39,12 @@ impl Merger {
         for timeline in timelines {
             self.merge_timeline(timeline)?
         }
-        Ok(Timeline::try_from(&self.state)?)
+        Timeline::try_from(&self.state)
     }
 
     /// Return the merged timeline of all inputs
     pub fn timeline(&self) -> Result<Timeline> {
-        Ok(Timeline::try_from(&self.state)?)
+        Timeline::try_from(&self.state)
     }
 }
 

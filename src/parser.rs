@@ -204,7 +204,7 @@ impl Parser {
             }
         }
 
-        Ok(Timeline::try_from(&self.state)?)
+        Timeline::try_from(&self.state)
     }
 }
 
