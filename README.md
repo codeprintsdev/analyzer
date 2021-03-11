@@ -1,5 +1,7 @@
 # codeprints analyzer
 
+[![rust](https://github.com/codeprintsdev/analyzer/actions/workflows/rust.yml/badge.svg)](https://github.com/codeprintsdev/analyzer/actions/workflows/rust.yml)
+
 A command-line tool which analyzes local/private git repositories  
 and generates a data file for [codeprints.dev](https://codeprints.dev/).
 
