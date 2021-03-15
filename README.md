@@ -2,6 +2,8 @@
 
 [![rust](https://github.com/codeprintsdev/analyzer/actions/workflows/rust.yml/badge.svg)](https://github.com/codeprintsdev/analyzer/actions/workflows/rust.yml)
 
+![](framed_2_1080x.webp)
+
 A command-line tool which analyzes local/private git repositories  
 and generates a data file for [codeprints.dev](https://codeprints.dev/).
 
