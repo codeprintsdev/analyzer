@@ -10,7 +10,7 @@
 * [Limiting authors/committers](#limiting-authorscommitters)
 * [More options](#more-options)
 
-![](framed_2_1080x.webp)
+![](assets/framed.jpg)
 
 A command-line tool which analyzes local/private git repositories  
 and generates a data file for [codeprints.dev](https://codeprints.dev/).
