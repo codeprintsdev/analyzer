@@ -25,6 +25,6 @@ pub enum Command {
         #[structopt(alias = "since", long)]
         after: Option<String>,
     },
-    /// Merge all codeprints*.json to one file named codeprints_merged.json
+    /// Merge all codeprints*.json to one file named merged_codeprints_<unix_timestamp>.json
     Merge {},
 }
