@@ -3,6 +3,7 @@ use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 #[structopt(name = "codeprints-analyzer")]
 pub enum Command {
+    /// Run the analyzer and generate json summary of contributions
     Run {
         /// Limit the commits output to ones with author header lines
         /// that match the specified pattern.
@@ -24,5 +25,6 @@ pub enum Command {
         #[structopt(alias = "since", long)]
         after: Option<String>,
     },
+    /// Merge all codeprints*.json to one file named codeprints_merged.json
     Merge {},
 }
