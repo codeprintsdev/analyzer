@@ -16,10 +16,17 @@ use codeprints_analyzer::Parser;
 use codeprints_analyzer::Timeline;
 use glob::glob;
 use std::fs;
+use std::time::SystemTime;
 use structopt::StructOpt;
 
 mod options;
 use options::Command;
+
+fn timestamp() -> Result<u64> {
+    Ok(SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs())
+}
 
 fn write(timeline: &Timeline, output_file: &str) -> Result<()> {
     let output = serde_json::to_string_pretty(&timeline)?;
@@ -53,7 +60,10 @@ fn main() -> Result<()> {
             let timeline = parser.parse()?;
 
             let sha = git::sha()?;
-            write(&timeline, &format!("codeprints_{}.json", sha))?;
+            write(
+                &timeline,
+                &format!("codeprints_{}_{}.json", sha, timestamp()?),
+            )?;
         }
         Command::Merge {} => {
             // Find all `codeprints*.json` files in the current directory
@@ -70,7 +80,10 @@ fn main() -> Result<()> {
                     Err(e) => println!("{:?}", e),
                 }
             }
-            write(&merger.timeline()?, "codeprints_merged.json")?;
+            write(
+                &merger.timeline()?,
+                &format!("merged_codeprints_{}.json", timestamp()?),
+            )?;
         }
     };
     Ok(())
