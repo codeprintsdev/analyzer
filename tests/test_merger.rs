@@ -3,7 +3,7 @@ use codeprints_analyzer::Timeline;
 use std::fs;
 
 #[test]
-fn test_intesity() {
+fn test_intensity() {
     let input = fs::read_to_string("fixtures/mre_raw_2020_from_api.json").unwrap();
     let timeline: Timeline = serde_json::from_str(&input).unwrap();
     let mut merger = Merger::new();
@@ -16,18 +16,15 @@ fn test_intesity() {
         assert_eq!(year.total, orig_year.total);
     }
 
-    for contribution in new_timeline.contributions {
-        let orig_contribution = timeline
+    for actual in new_timeline.contributions {
+        let expected = timeline
             .contributions
             .iter()
-            .find(|c| c.date == contribution.date)
+            .find(|c| c.date == actual.date)
             .unwrap();
 
-        println!("contribution: {:?}", contribution);
-        println!("orig: {:?}", orig_contribution);
-
-        assert_eq!(contribution.count, orig_contribution.count);
-        assert_eq!(contribution.color, orig_contribution.color);
-        assert_eq!(contribution.intensity, orig_contribution.intensity);
+        assert_eq!(actual.intensity, expected.intensity);
+        assert_eq!(actual.count, expected.count);
+        assert_eq!(actual.color, expected.color);
     }
 }

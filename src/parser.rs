@@ -79,10 +79,10 @@ fn get_intensity(quartiles: &[usize], commits: usize) -> usize {
 
 fn map_color(intensity: usize) -> String {
     match intensity {
-        1 => "var(--color-calendar-graph-day-L1-bg)",
-        2 => "var(--color-calendar-graph-day-L2-bg)",
-        3 => "var(--color-calendar-graph-day-L3-bg)",
-        4 => "var(--color-calendar-graph-day-L4-bg)",
+        1 => "var(--color-calendar-graph-day-l1-bg)",
+        2 => "var(--color-calendar-graph-day-l2-bg)",
+        3 => "var(--color-calendar-graph-day-l3-bg)",
+        4 => "var(--color-calendar-graph-day-l4-bg)",
         _ => "var(--color-calendar-graph-day-bg)",
     }
     .to_string()
