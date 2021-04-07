@@ -1,5 +1,4 @@
 use codeprints_analyzer::Parser;
-use serde_json;
 use std::fs;
 
 fn ignore_whitespace(s: &str) -> String {

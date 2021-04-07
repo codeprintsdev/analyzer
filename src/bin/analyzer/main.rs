@@ -18,7 +18,7 @@ use structopt::StructOpt;
 mod options;
 use options::Opt;
 
-const OUTPUT_FILE: &'static str = "codeprints.json";
+const OUTPUT_FILE: &str = "codeprints.json";
 
 fn main() -> Result<()> {
     let opt = Opt::from_args();
