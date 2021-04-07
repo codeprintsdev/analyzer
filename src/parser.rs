@@ -179,7 +179,7 @@ mod test_super {
         let expected = vec![Year {
             year: "2020".to_string(),
             total: 7,
-            range: range,
+            range,
         }];
         let mut parser = Parser::new(input.to_string());
         assert_eq!(parser.parse().unwrap().years, expected);

@@ -1,4 +1,4 @@
-use analyzer::Parser;
+use codeprints_analyzer::Parser;
 use serde_json;
 use std::fs;
 
