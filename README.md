@@ -2,6 +2,16 @@
 
 [![rust](https://github.com/codeprintsdev/analyzer/actions/workflows/rust.yml/badge.svg)](https://github.com/codeprintsdev/analyzer/actions/workflows/rust.yml)
 
+## Table of contents
+
+* [Why](#why)
+* [Usage](#usage)
+* [Limiting the time range](#limiting-the-time-range)
+* [Limiting authors/committers](#limiting-authorscommitters)
+* [More options](#more-options)
+
+![](assets/framed.jpg)
+
 A command-line tool which analyzes local/private git repositories  
 and generates a data file for [codeprints.dev](https://codeprints.dev/).
 
@@ -38,7 +48,7 @@ codeprints-analyzer
 
 3. Upload the JSON file to codeprints.dev to render a print.
 
-## Limiting time range
+## Limiting the time range
 
 You can set the start- and end-date of the output.
 
