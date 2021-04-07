@@ -10,27 +10,81 @@
 )]
 
 use anyhow::{Context, Result};
-use codeprints_analyzer::count_commits;
+use codeprints_analyzer::git;
+use codeprints_analyzer::Merger;
 use codeprints_analyzer::Parser;
+use codeprints_analyzer::Timeline;
+use glob::glob;
 use std::fs;
+use std::time::SystemTime;
 use structopt::StructOpt;
 
 mod options;
-use options::Opt;
+use options::Command;
 
-const OUTPUT_FILE: &str = "codeprints.json";
+fn timestamp() -> Result<u64> {
+    Ok(SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs())
+}
+
+fn write(timeline: &Timeline, output_file: &str) -> Result<()> {
+    let output = serde_json::to_string_pretty(&timeline)?;
+    fs::write(output_file, output)?;
+    println!("done!");
+    println!("Output file: {}", output_file);
+    Ok(())
+}
 
 fn main() -> Result<()> {
-    let opt = Opt::from_args();
+    let opt = Command::from_args();
 
-    print!("Analyzing commits in current repository...");
-    let input = count_commits(opt.before, opt.after, opt.author, opt.committer)
-        .context("Cannot read project history. Make sure there is no typo in the command")?;
-    let mut parser = Parser::new(input);
-    let timeline = parser.parse()?;
-    let output = serde_json::to_string_pretty(&timeline)?;
-    fs::write(OUTPUT_FILE, output)?;
-    println!("done!");
-    println!("Output file: {}", OUTPUT_FILE);
+    match opt {
+        Command::Run {
+            before,
+            after,
+            author,
+            committer,
+        } => {
+            print!("Analyzing commits in current repository...");
+            let input = git::count_commits(&before, &after, author, committer).context(
+                "Cannot read project history. Make sure there is no typo in the command",
+            )?;
+            let mut parser = Parser::new(input);
+            if let Some(before) = before {
+                parser.set_before(before)?;
+            }
+            if let Some(after) = after {
+                parser.set_after(after)?;
+            }
+            let timeline = parser.parse()?;
+
+            let sha = git::sha()?;
+            write(
+                &timeline,
+                &format!("codeprints_{}_{}.json", sha, timestamp()?),
+            )?;
+        }
+        Command::Merge {} => {
+            // Find all `codeprints*.json` files in the current directory
+            // using glob.
+            let mut merger = Merger::new();
+            for entry in glob("codeprints*.json")? {
+                match entry {
+                    Ok(path) => {
+                        println!("Merging {}", path.display());
+                        let input = fs::read_to_string(path)?;
+                        let timeline: Timeline = serde_json::from_str(&input)?;
+                        merger.merge_timeline(&timeline)?;
+                    }
+                    Err(e) => println!("{:?}", e),
+                }
+            }
+            write(
+                &merger.timeline()?,
+                &format!("merged_codeprints_{}.json", timestamp()?),
+            )?;
+        }
+    };
     Ok(())
 }

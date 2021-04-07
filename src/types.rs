@@ -7,7 +7,7 @@ pub struct Day {
     pub date: NaiveDate,
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Year {
     pub year: String,
@@ -18,10 +18,13 @@ pub struct Year {
 pub type Years = Vec<Year>;
 pub type Contributions = Vec<Contribution>;
 
+/// A timeline represents a codeprints.json file's contents
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Timeline {
+    /// Years belonging to the timeline
     pub years: Years,
+    /// Contributions belonging to the timeline
     pub contributions: Contributions,
 }
 

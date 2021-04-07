@@ -1,10 +1,11 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
+use chrono::NaiveDate;
 use duct::cmd;
 
 /// Get the count of commits for each day from the git logs
 pub fn count_commits(
-    before: Option<String>,
-    after: Option<String>,
+    before: &Option<String>,
+    after: &Option<String>,
     authors: Vec<String>,
     committers: Vec<String>,
 ) -> Result<String> {
@@ -27,4 +28,20 @@ pub fn count_commits(
     }
     let commits = cmd("git", &args).read()?;
     Ok(commits)
+}
+
+/// Parse a date from the git log
+pub fn parse_date(line: &str) -> Result<Option<NaiveDate>> {
+    if line.trim().is_empty() {
+        // Empty lines are allowed, but skipped
+        return Ok(None);
+    }
+    let date: NaiveDate = line.parse().context(format!("Invalid date: {}", line))?;
+    Ok(Some(date))
+}
+
+/// Get the current git commit sha
+pub fn sha() -> Result<String> {
+    let sha = cmd("git", &["rev-parse", "--short", "HEAD"]).read()?;
+    Ok(sha)
 }
